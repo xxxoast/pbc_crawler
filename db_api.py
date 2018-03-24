@@ -9,24 +9,44 @@ if pkg_path not in sys.path:
 from future_mysql.dbBase import DB_BASE
 from sqlalchemy import Column, Integer, String, DateTime, Numeric, Index, Float, Boolean
 from sqlalchemy import Table
+import os
 
-class City(DB_BASE):
+get_city = lambda x: x.split('-')[0]
+
+class Punishment(DB_BASE):
 
     def __init__(self):
         db_name = 'pbc'
-        table_name = 'punishemnt_items'
-        super(City, self).__init__(db_name)
+        table_name = 'punishement'
+        super(Punishment, self).__init__(db_name)
 
-        self.table_struct = Table(table_name, self.meta,
+        self.table_obj = Table(table_name, self.meta,
                                   Column('city', String(64),index = True),
-                                  Column('web_url',String(256),index = True),
-                                  Column('publication_url', String(256),index = True),
-                                  Column('punishment_item', String(256)),primary_key = True),
+                                  Column('web_url',String(128),),
+                                  Column('publication_url', String(128),index = True),
+                                  Column('punishment_item_url', String(128),primary_key = True),
                                   Column('update_date',Integer)
                                   )
         
     def create_table(self):
-        self.user_struct = self.quick_map(self.table_struct)
+        self.table_struct = self.quick_map(self.table_obj)
         
+
+def init_table():        
+    dbapi = Punishment()
+    dbapi.create_table()
+    src_path = r'/home/xudi/tmp/pbc_punishment4'
+    for root, dirs, files in os.walk(src_path):
+        print root.split('//').split('.')[0]
+        for name in files:
+            fname = os.path.join(root, name)
+            with open(fname,'r') as fin:
+                for line in fin:
+                    data = line.split()
+                    print data
+                    dbapi.insert_listlike(dbapi.table_struct,data,merge = True)
+                    
+                    
 if __name__ == '__main__':
-    pass
+    init_table()
+    
