@@ -12,6 +12,7 @@ from get_dynamic_html import get_js_html
 from bs4 import BeautifulSoup
 
 unicode2utf8 = lambda x: x.encode('utf-8') if isinstance(x,unicode) else x
+dates_trans = lambda x: ''.join(x.split('-'))
 
 HEADERS = {
     'X-Requested-With': 'XMLHttpRequest',
@@ -27,54 +28,65 @@ def generate_branch_list():
     atags = branch_table.find_all('a')
     with open('branch_list.txt','w+') as fout:
         for atag in atags:
-            fout.write(atag['href'])
+            fout.write(atag.get('href'))
             fout.write('\n') 
 
 def find_public_page(root_url):
     #get main page
     main_page = get_js_html(root_url)
     soup = BeautifulSoup(main_page, 'lxml')
-    
+    #init 
     key_word_outer = '政务公开目录'
     key_word_inner = re.compile(ur'行政处罚(公示){0,1}')
     key_word_punish = re.compile(ur'(((行政){0,1}处罚(的)*(信息){0,1}(公示|公示表|表))|(第[0-9]+号))')
+    key_word_date  = re.compile(ur'20[0-9]{2}-[0-9]{1,2}-[0-9]{1,2}')
     has_found = False
     download_urls = []
-    
     # find 公开目录
     public_xml = soup.find_all('a',text = key_word_outer )
     if len(public_xml) <= 0:
-        continue
-    public_url = urljoin(root_url,public_xml[0]['href'])
+        return []
+    public_url = urljoin(root_url,public_xml[0].get('href'))
     print 'public_url = ',public_url
     public_page = get_js_html(public_url)
     punish_soup = BeautifulSoup(public_page,'lxml')
     # find 处罚公示
     punish_xml = punish_soup.find_all('a',text = key_word_inner)
     if len(punish_xml) <= 0:
-        continue
-    punish_url = urljoin(root_url,punish_xml[0]['href'])
+        return []
+    punish_url = urljoin(root_url,punish_xml[0].get('href'))
     print 'punish_url = ',punish_url
     item_list_page = get_js_html(punish_url)
     item_list_soup = BeautifulSoup(item_list_page,'lxml')
-    punish_items = item_list_soup.find_all('a',text = key_word_punish)
+    
+    punish_items_tr = [ i.parent for i in soup.find_all('td',text = key_word_punish) if i.parent ]
+    punish_items_tr = filter(lambda i:i.find('td',text = key_word_date),punish_items_tr)
+    punish_items = [ i.find('a',text = key_word_punish).get('href') for i in punish_items_tr]
+    punish_dates = [ i.find('td',text = key_word_date).text for i in punish_items_tr]
+    
+    # recursively get next page
     next_page_tag = item_list_soup.find('a',text = '下一页')
     while 'href' in next_page_tag.attrs:
-        next_url = urljoin(root_url,next_page_tag['href'])
+        next_url = urljoin(root_url,next_page_tag.get('href'))
         next_page = get_js_html(next_url) 
         next_soup = BeautifulSoup(next_page,'lxml')
-        next_punish_items = next_soup.find_all('a',text = key_word_punish)
+        
+        next_punish_items_tr = [ i.parent for i in next_soup.find_all('td',text = key_word_punish) if i.parent ]
+        next_punish_items_tr = filter(lambda i:i.find('td',text = key_word_date),next_punish_items_tr)
+        next_punish_items = [ i.find('a',text = key_word_punish).get('href') for i in next_punish_items_tr]
+        next_punish_dates = [ i.find('td',text = key_word_date).text for i in next_punish_items_tr]
+        
         punish_items.extend(next_punish_items)
+        punish_dates.extend(next_punish_dates)
         next_page_tag = next_soup.find('a',text = '下一页')
-    if len(punish_items) <= 0:
-        continue
-    for punish_item in punish_items:
-        des_url = urljoin(root_url,punish_item['href'])
+    
+    #urljoin
+    for punish_item,punish_date in zip(punish_items,punish_dates):
+        des_url = urljoin(root_url,punish_item)
         if des_url != punish_url:
-            download_urls.append(des_url)
-        has_found = True 
-                            
-    if not has_found:
+            download_urls.append((des_url,punish_date))  
+                      
+    if len(download_urls) <= 0:
         print 'Failed = ',root_url
         return []
     return download_urls
@@ -98,8 +110,8 @@ def crawler(include = [],exclude = []):
             print 'len(des_urls) = ', len(des_urls)
             des_path = '/home/xudi/tmp/pbc_punishment3'
             with open(os.path.join(des_path, '-'.join((city , str(len(des_urls))))),'w+') as fout:
-                for i in des_urls:
-                    fout.write(unicode2utf8(i))
+                for (i,j) in des_urls:
+                    fout.write(unicode2utf8(i),dates_trans(j))
                     fout.write('\n')
 
 def test_single():
@@ -115,7 +127,7 @@ def test_single():
             fout.write('\n')
 
 
-def regex_test():
+def regex_soup_test():
     html = '''
     <table border="0" cellpadding="0" cellspacing="0" width="100%" align="center" opentype="page"> 
  <tbody> 
@@ -239,16 +251,19 @@ def regex_test():
 </table>
 '''
     soup = BeautifulSoup(html,'lxml')
-    key_word_punish = ur'[\s]*(行政){0,1}处罚(的)*(信息){0,1}[\s]*(公示表|表|公示)'
-    tags = soup.find_all('a',text = re.compile(key_word_punish))
-    print len(tags)
-    for tag in tags:
-        print tag.text
+    key_word_punish = re.compile(ur'(((行政){0,1}处罚(的)*(信息){0,1}(公示|公示表|表))|(第[0-9]+号))')
+    key_word_date  = re.compile(ur'20[0-9]{2}-[0-9]{1,2}-[0-9]{1,2}')
+    
+    punish_items_tr = [ i.parent for i in soup.find_all('td',text = key_word_punish) if i.parent ]
+    punish_items_tr = filter(lambda i:i.find('td',text = key_word_date),punish_items_tr)
+    punish_items = [ i.find('a',text = key_word_punish).get('href') for i in punish_items_tr]
+    punish_dates = [ i.find('td',text = key_word_date).text for i in punish_items_tr]
+    print punish_items,punish_dates
            
 if __name__ == '__main__':
-    crawler()
+#     crawler()
 #     test_single()
-#     regex_test()
+    regex_soup_test()
 
 
     
