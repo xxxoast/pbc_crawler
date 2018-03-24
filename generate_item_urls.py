@@ -38,7 +38,7 @@ def find_public_page(root_url):
     key_word_outer = '政务公开目录'
     key_word_inner = re.compile(ur'行政处罚(公示){0,1}')
     key_word_punish = re.compile(ur'(((行政){0,1}处罚(的)*(信息){0,1}(公示|公示表|表)[\s]*)|([1-9]+号))')
-    key_word_date  = re.compile(ur'20[0-9]{2}-[0-9]{1,2}-[0-9]{1,2}')
+    key_word_date  = re.compile(ur'^20[0-9]{2}-[0-9]{1,2}-[0-9]{1,2}$')
     has_found = False
     download_urls = []
     # find 公开目录
@@ -71,7 +71,7 @@ def find_public_page(root_url):
             next_url = urljoin(root_url,next_page_tag.get('href'))
         if ('tagname' in next_page_tag.attrs):
             #special case for chongqing
-            if not next_page_tag.get('onclick'):
+            if next_page_tag.get('tagname').startswith('['):
                 break
             next_url = urljoin(root_url,next_page_tag.get('tagname'))
         next_page = get_js_html(next_url) 
@@ -85,7 +85,7 @@ def find_public_page(root_url):
         punish_items.extend(next_punish_items)
         punish_dates.extend(next_punish_dates)
         next_page_tag = next_soup.find('a',text = '下一页')
-        print 'next_page_tag = ',next_page_tag
+#         print 'next_page_tag = ',next_page_tag
     #urljoin
     for punish_item,punish_date in zip(punish_items,punish_dates):
         des_url = urljoin(root_url,punish_item)
@@ -113,7 +113,7 @@ def crawler(include = [],exclude = []):
                 continue
             punish_url,des_urls = find_public_page(url)
             print 'len(des_urls) = ', len(des_urls)
-            des_path = '/home/xudi/tmp/pbc_punishment4'
+            des_path = '/home/xudi/tmp/pbc_punishment5'
             des_path = os.path.join(des_path, '-'.join((city , str(len(des_urls)))))
     
             with open(des_path,'w+') as fout:
@@ -281,7 +281,7 @@ def regex_soup_test():
     print punish_items,punish_dates
            
 if __name__ == '__main__':
-    crawler(include = ['chongqing'])
+    crawler()
 #     regex_soup_test()
 
 

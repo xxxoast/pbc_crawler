@@ -35,15 +35,14 @@ class Punishment(DB_BASE):
 def init_table():        
     dbapi = Punishment()
     dbapi.create_table()
-    src_path = r'/home/xudi/tmp/pbc_punishment4'
+    src_path = r'/home/xudi/tmp/pbc_punishment5'
     for root, dirs, files in os.walk(src_path):
-        print root.split('//').split('.')[0]
+        print root
         for name in files:
             fname = os.path.join(root, name)
             with open(fname,'r') as fin:
                 for line in fin:
                     data = line.split()
-                    print data
                     dbapi.insert_listlike(dbapi.table_struct,data,merge = True)
                     
                     
