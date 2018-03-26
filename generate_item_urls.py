@@ -7,7 +7,7 @@ import threading
 # coding : cp936
 import requests
 from urlparse import urljoin
-from get_dynamic_html import get_js_html
+from get_dynamic_html import get_js_html,download_js
 from bs4 import BeautifulSoup
 
 unicode2utf8 = lambda x: x.encode('utf8') if isinstance(x,unicode) else x
