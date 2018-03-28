@@ -1,12 +1,18 @@
 # coding=utf-8
 from selenium import webdriver
+import os
+import time
 
 fireFoxOptions = webdriver.FirefoxOptions()
 fireFoxOptions.set_headless()
 
+download_path = '/home/xudi/tmp/selenium_download'
+try_timeout_count = 20
+try_sleep_interval = 0.5
+
 def get_profile():
     profile = webdriver.FirefoxProfile()
-    profile.set_preference('browser.download.dir', '/home/xudi/tmp/selenium_download')
+    profile.set_preference('browser.download.dir', download_path)
     profile.set_preference('browser.download.folderList', 2)
     profile.set_preference('browser.download.manager.showWhenStarting', False)
     profile.set_preference("plugin.disable_full_page_plugin_for_types", "application/pdf")
@@ -32,9 +38,18 @@ def get_js_html(url):
 def download_js(url,href_text,content_type = None):
     brower.get(url)    
     button = brower.find_element_by_link_text(href_text)
+    prev_files_length = len(os.listdir(download_path))
     button.click()
+    try_count = 0
+    while True:
+        time.sleep(try_sleep_interval)
+        after_files_length = len(os.listdir(download_path))
+        if after_files_length > prev_files_length:
+            break
+        try_count += 1
+        if try_count >= try_timeout_count:
+            break
         
 if __name__ == '__main__':
-    url = r'http://shanghai.pbc.gov.cn/fzhshanghai/113577/114832/114918/3008150/index.html'
-    download_js(url, u'（第13期）行政处罚信息公示表.pdf', None)
+    pass
     

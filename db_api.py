@@ -37,7 +37,7 @@ class Punishment(DB_BASE):
 def init_table():        
     dbapi = Punishment()
     dbapi.create_table()
-    src_path = r'/home/xudi/tmp/pbc_punishment5'
+    src_path = r'/home/xudi/tmp/pbc_punishment'
     for root, dirs, files in os.walk(src_path):
         print root
         for name in files:
