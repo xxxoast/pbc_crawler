@@ -26,14 +26,14 @@ is_doc_url = lambda x: x.endswith('.doc') or x.endswith('.docx') or x.endswith('
                     or x.endswith('.xlsx') or x.endswith('.pdf')
 
 content_pattern = re.compile(r'[Cc]ontent-[Tt]ype:\s*([a-zA-Z]+/[a-zA-Z\-]+)')
-delete_span = re.compile(ur'<span[^>]*>(.*?)</span>')
-#html = delete_span.sub(lambda x: x.group(1),html )
+# delete_span = re.compile(ur'<span[^>]*>(.*?)</span>')
+# html = delete_span.sub(lambda x: x.group(1),html )
 public_table_kw = re.compile(ur'违法行为\s*(类型|内容){0,1}')
 link_kw = re.compile(ur'(行政){0,1}处罚(信息){0,1}(公示表|公示|表){0,1}')
-href_kw = re.compile(ur'.(xls|xlsx|doc|docx|pdf)$')
-img_kw  = re.compile(ur'.(tif|jpg|jpeg|bmp)$')
+href_kw = re.compile(ur'.(xls|xlsx|doc|docx|pdf|tif|jpg|jpeg|bmp)$')
+# img_kw  = re.compile(ur'.(tif|jpg|jpeg|bmp)$')
 
-def get_content_type(url):
+def get_content_type(url):    
     ret = subprocess.Popen(['curl','-I',url], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     buf = ret.stdout.read().strip()
     matched = content_pattern.search(buf,re.I)
@@ -52,8 +52,8 @@ def dump_doc(page_url,des_path,text,fname,index,real_url,update_date):
     suffix = fname.split('.')[-1]
     outfile_name = '.'.join(('_'.join((str(index),str(update_date))),suffix))
     outfile_path = os.path.join(des_path,outfile_name)
-    content_type = get_content_type(real_url)
-    print text,page_url,real_url,content_type
+    content_type = None
+    print text,page_url,real_url
     download_js(page_url,text,content_type)
     shutil.move(os.path.join(download_path,fname), outfile_path)
     
@@ -82,8 +82,8 @@ def create_punishment_fiels(dbapi,city,des_path):
         soup = BeautifulSoup(public_html,'lxml')
         tag = soup.find(['p','span','td'],text = public_table_kw)
         link_tag  = soup.find('a',text = link_kw,attrs={'href':href_kw})
-        img_tag   = soup.find('a',attrs={'href':img_kw})
-        #case 2: is table , like beijing
+#         img_tag   = soup.find('a',attrs={'href':img_kw})
+#         case 2: is table , like beijing
         if tag:
             print 'table = ',record.punishment_item_url
             table_tag = tag.find_parent('table')
@@ -104,9 +104,9 @@ def create_punishment_fiels(dbapi,city,des_path):
 #             print record.punishment_item_url,des_path,text,fname,record.update_date,record.punishment_item_url
             dump_doc(record.punishment_item_url,des_path,text,fname,record.index,real_link,record.update_date)
             continue
-        elif img_tag:
-            print 'img, skipped'
-            continue
+#         elif img_tag:
+#             print 'img, skipped'
+#             continue
         #case 4: here warning
         print '[Error] ---> ',city,' ',record.punishment_item_url
 
@@ -480,7 +480,7 @@ def get_punish_table():
     cursor = ss.query(dbapi.table_struct.city).group_by(dbapi.table_struct.city).all()
     cities = [i.city for i in cursor]
     ss.close()
-    cities = ['shanghai',]
+    cities = ['shanghai']
     print cities
     for city in cities:
         des_path = os.path.join(root_path,city)
@@ -495,8 +495,7 @@ def test_download():
 
 if __name__ == '__main__':
 #     test_html()
-#     get_punish_table()
-#     test_content_type()
-    test_download()
+    get_punish_table()
+#     test_download()
 
     
