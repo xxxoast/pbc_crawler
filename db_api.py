@@ -9,7 +9,7 @@ if pkg_path not in sys.path:
 from future_mysql.dbBase import DB_BASE
 from sqlalchemy import Column, Integer, String, DateTime, Numeric, Index, Float, Boolean
 from sqlalchemy import Table
-from sqlalchemy import func
+from sqlalchemy import func,desc
 import os
 
 get_city = lambda x: x.split('-')[0]

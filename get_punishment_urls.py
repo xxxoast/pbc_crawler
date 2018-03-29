@@ -117,7 +117,7 @@ def valid_city(city,include,exclude):
         return True if city not in exclude else False
     return True
 
-def crawler(include = [],exclude = [],mode = 'update',update_date = None):
+def crawler(include = [],exclude = [],mode = 'update'):
     from db_api import Punishment
     dbapi = Punishment()
     dbapi.create_table()
@@ -125,12 +125,12 @@ def crawler(include = [],exclude = [],mode = 'update',update_date = None):
     with open('branch_list.txt','r') as fin:
         for url in fin:
             city = url.split(r'//')[-1].split('.')[0]
-            print city
             if not valid_city(city,include,exclude):
                 continue
+            print city
             new_items[city] = []
-            download_urls = find_public_page(url,update_date)
             if mode == 'init':
+                download_urls = find_public_page(url,update_date = None)
                 des_path = '/home/xudi/tmp/pbc_punishment'
                 des_path = os.path.join(des_path, '-'.join((city , str(len(download_urls)))))
                 with open(des_path,'w+') as fout:
@@ -141,6 +141,9 @@ def crawler(include = [],exclude = [],mode = 'update',update_date = None):
             elif mode == 'update':
                 ss = dbapi.session()
                 max_count = ss.query(func.max(dbapi.table_struct.index)).filter_by(city = city).scalar() + 1
+                record = ss.query(dbapi.table_struct.update_date).filter_by(city = city).order_by(dbapi.table_struct.update_date.desc()).first()
+                print max_count,record.update_date
+                download_urls = find_public_page(url,record.update_date)
                 for (punish_page,punish_url,punish_date) in download_urls:
                     used_to = ss.query(dbapi.table_struct).filter_by(punishment_item_url = punish_url.strip()).scalar()
                     if used_to is None:

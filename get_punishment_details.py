@@ -10,7 +10,7 @@ import time
 from get_dynamic_html import get_js_html,download_js
 from bs4 import BeautifulSoup
 from urlparse import urljoin
-from db_api import Punishment,func
+from db_api import Punishment,func,desc
 
 HEADERS = {
     'X-Requested-With': 'XMLHttpRequest',
@@ -105,8 +105,6 @@ def create_punishment_fiels(dbapi,city,des_path):
 #             print record.publication_url,record.punishment_item_url,real_url
             publication_html = get_js_html(record.publication_url)
             this_soup = BeautifulSoup(publication_html,'lxml')
-            print publication_html
-            print real_url
             this_tag = this_soup.find('a',attrs = {'href':real_url})
             text = this_tag.get_text()
             fname = real_url.split('/')[-1]
@@ -143,15 +141,67 @@ def create_punishment_fiels(dbapi,city,des_path):
         
 def test_html():
     html = '''
+    <table border="1" cellpadding="0" cellspacing="0">
+         <tbody> 
+          <tr> 
+           <td width="43"><p align="center">序号
+             <o:p></o:p></p> </td> 
+           <td width="110"><p align="center">企业名称
+             <o:p></o:p></p> </td> 
+           <td width="100"><p align="center">行政处罚决定书文号
+             <o:p></o:p></p> </td> 
+           <td width="123"><p align="center">违法行为类型
+             <o:p></o:p></p> </td> 
+           <td width="95"><p align="center">行政处罚内容
+             <o:p></o:p></p> </td> 
+           <td width="140"><p align="center">作出行政处罚
+             <o:p></o:p></p> <p align="center">决定机关名称
+             <o:p></o:p></p> </td> 
+           <td width="96"><p align="center">作出行政处罚
+             <o:p></o:p></p> <p align="center">决定日期
+             <o:p></o:p></p> </td> 
+           <td width="97"><p align="center">是否公示
+             <o:p></o:p></p> </td> 
+           <td width="65"><p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 备注
+             <o:p></o:p></p> </td> 
+          </tr> 
+          <tr> 
+           <td valign="top" width="43"><p align="center">1
+             <o:p></o:p></p> </td> 
+           <td valign="top" width="110"><p>昆明市西山区金龙雅步楼梯经营部
+             <o:p></o:p></p> </td> 
+           <td valign="top" width="100"><p align="center">西银罚字[2015]第129号
+             <o:p></o:p></p> </td> 
+           <td valign="top" width="123"><p align="center">签发空头支票
+             <o:p></o:p></p> </td> 
+           <td valign="top" width="95"><p align="center">处以金额2，500元罚款
+             <o:p></o:p></p> </td> 
+           <td valign="top" width="140"><p align="left">中国人民银行西山区支行
+             <o:p></o:p></p> </td> 
+           <td valign="top" width="96"><p align="center">
+             <st1:chsdate day="02" islunardate="False" isrocdate="False" month="03" w:st="on" year="2016">
+              2016年03月02日
+             </st1:chsdate>
+             <o:p></o:p></p> </td> 
+           <td valign="top" width="97"><p align="center">是
+             <o:p></o:p></p> </td> 
+           <td valign="top" width="65"><p align="center">
+             <o:p>
+              &nbsp;
+             </o:p></p> </td> 
+          </tr>
+         </tbody>
+        </table><p></p></td> 
+      </tr> 
+      <tr valign="middle"> 
+       <td height="19"></td> 
+      </tr> 
+     </tbody> 
+    </table>
     '''
-    #     html = delete_span.sub(lambda x: x.group(1),html )
     soup = BeautifulSoup(html,'lxml')
-    soup = strip_tags(soup, ['span','p'])
-    print soup.prettify()
-    tag = soup.find('span',text = public_table_kw)
-    link_tag  = soup.find('a',text = link_kw,attrs={'href':href_kw})
-    table_tag = tag.find_parent('table')
-    print table_tag.prettify()
+    tag = soup.find(['p','span','td'],text = public_table_kw)
+    print tag
 
 def get_cities():
     dbapi = Punishment()
@@ -169,7 +219,6 @@ def get_punish_table():
     cursor = ss.query(dbapi.table_struct.city).group_by(dbapi.table_struct.city).all()
     cities = [i.city for i in cursor]
     ss.close()
-    cities = ['lanzhou',]
     print cities
     for city in cities:
         des_path = os.path.join(root_path,city)
@@ -182,8 +231,8 @@ def test_download():
     download_js(url, u'（第13期）行政处罚信息公示表.pdf', 'application/octet-stream')
 
 if __name__ == '__main__':
-#     test_html()
-    get_punish_table()
+    test_html()
+#     get_punish_table()
 #     test_download()
 
                 
