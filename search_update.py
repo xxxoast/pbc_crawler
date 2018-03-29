@@ -21,6 +21,7 @@ def search_update(update_date,include = [],exclude = []):
     sql = ''.join((sql,';'))
     df = pd.read_sql_query(sql,dbapi.engine)
     return df
-
+    
 if __name__ == '__main__':
-    print search_update(20180301,include = ['beijing','shanghai'],exclude = ['shanghai'])
+#     print search_update(20180301,include = ['beijing','shanghai'],exclude = ['shanghai'])
+    test_html()

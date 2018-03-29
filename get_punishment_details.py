@@ -29,9 +29,12 @@ content_pattern = re.compile(r'[Cc]ontent-[Tt]ype:\s*([a-zA-Z]+/[a-zA-Z\-]+)')
 # delete_span = re.compile(ur'<span[^>]*>(.*?)</span>')
 # html = delete_span.sub(lambda x: x.group(1),html )
 public_table_kw = re.compile(ur'违法行为\s*(类型|内容){0,1}')
-link_kw = re.compile(ur'(行政){0,1}处罚(信息){0,1}(公示表|公示|表){0,1}')
+link_kw = re.compile(ur'((行政){0,1}处罚(信息){0,1}){0,1}(公示表|公示|表){0,1}|([1-9]+\d*号)')
 href_kw = re.compile(ur'.(xls|xlsx|doc|docx|pdf|tif|jpg|jpeg|bmp|wps|et)$')
 # img_kw  = re.compile(ur'.(tif|jpg|jpeg|bmp)$')
+
+def is_table_td(tag):
+    return tag.name == 'td' and public_table_kw.search(tag.text)
 
 get_city = lambda x: x.split('-')[0]
 is_doc_url = lambda x: href_kw.search(x)
@@ -112,7 +115,8 @@ def create_punishment_fiels(dbapi,city,des_path):
             continue
         public_html = get_js_html(record.punishment_item_url)
         soup = BeautifulSoup(public_html,'lxml')
-        tag = soup.find(['p','span','td'],text = public_table_kw)
+#         tag = soup.find(['p','span','td'],text = public_table_kw)
+        tag = soup.find(is_table_td)
         link_tag  = soup.find('a',text = link_kw,attrs={'href':href_kw})
 #         case 2: is table , like beijing
         if tag:
@@ -200,17 +204,8 @@ def test_html():
     </table>
     '''
     soup = BeautifulSoup(html,'lxml')
-    tag = soup.find(['p','span','td'],text = public_table_kw)
+    tag = soup.find(is_table_td)
     print tag
-
-def get_cities():
-    dbapi = Punishment()
-    dbapi.create_table()
-    ss = dbapi.get_session()
-    cursor = ss.query(dbapi.table_struct.city).group_by(dbapi.table_struct.city).all()
-    cities = [i.city for i in cursor]
-    ss.close()
-    return cities
 
 def get_punish_table():
     dbapi = Punishment()
@@ -231,8 +226,8 @@ def test_download():
     download_js(url, u'（第13期）行政处罚信息公示表.pdf', 'application/octet-stream')
 
 if __name__ == '__main__':
-    test_html()
-#     get_punish_table()
+#     test_html()
+    get_punish_table()
 #     test_download()
 
                 

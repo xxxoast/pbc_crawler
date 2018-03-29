@@ -33,6 +33,14 @@ class Punishment(DB_BASE):
     def create_table(self):
         self.table_struct = self.quick_map(self.table_obj)
         
+def get_cities():
+    dbapi = Punishment()
+    dbapi.create_table()
+    ss = dbapi.get_session()
+    cursor = ss.query(dbapi.table_struct.city).group_by(dbapi.table_struct.city).all()
+    cities = [i.city for i in cursor]
+    ss.close()
+    return cities
 
 def init_table():        
     dbapi = Punishment()
