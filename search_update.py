@@ -23,5 +23,4 @@ def search_update(update_date,include = [],exclude = []):
     return df
     
 if __name__ == '__main__':
-#     print search_update(20180301,include = ['beijing','shanghai'],exclude = ['shanghai'])
-    test_html()
+    print search_update(20180301,include = ['huhehaote'])
