@@ -3,6 +3,11 @@
 from get_punishment_urls import crawler
 from db_api import Punishment
 import pandas as pd
+import time
+
+def get_today():
+    t = time.localtime()
+    return t.tm_year * 10000 + t.tm_mon * 100 + t.tm_mday
 
 def search_update(update_date,include = [],exclude = []):
     crawler(include = include,exclude = exclude,mode = 'update')
@@ -23,4 +28,15 @@ def search_update(update_date,include = [],exclude = []):
     return df
     
 if __name__ == '__main__':
-    print search_update(20180301,include = ['huhehaote'])
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-date','--date', dest='date', nargs='?', default = get_today())
+    parser.add_argument('-include','--include', dest='include', nargs='*', default = [])
+    parser.add_argument('-exclude','--exclude', dest='exclude', nargs='*', default = [])
+    args = parser.parse_args()
+    arg_dict = vars(args)
+    print search_update(arg_dict['date'], \
+                        include = arg_dict['include'],\
+                        exclude = arg_dict['exclude'])
+    
+    

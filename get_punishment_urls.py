@@ -117,7 +117,7 @@ def valid_city(city,include,exclude):
         return True if city not in exclude else False
     return True
 
-def crawler(include = [],exclude = [],mode = 'update'):
+def crawler(include = [],exclude = [],init = False):
     from db_api import Punishment
     dbapi = Punishment()
     dbapi.create_table()
@@ -129,7 +129,7 @@ def crawler(include = [],exclude = [],mode = 'update'):
                 continue
             print city
             new_items[city] = []
-            if mode == 'init':
+            if init:
                 download_urls = find_public_page(url,update_date = None)
                 des_path = '/home/xudi/tmp/pbc_punishment'
                 des_path = os.path.join(des_path, '-'.join((city , str(len(download_urls)))))
@@ -138,7 +138,7 @@ def crawler(include = [],exclude = [],mode = 'update'):
                         s = ' '.join((city,url.strip(),punish_page.strip(),punish_url.strip(),dates_trans(punish_date)))
                         fout.write(unicode2utf8(s))
                         fout.write('\n')
-            elif mode == 'update':
+            else:
                 ss = dbapi.session()
                 max_count = ss.query(func.max(dbapi.table_struct.index)).filter_by(city = city).scalar() + 1
                 record = ss.query(dbapi.table_struct.update_date).filter_by(city = city).order_by(dbapi.table_struct.update_date.desc()).first()
@@ -151,12 +151,9 @@ def crawler(include = [],exclude = [],mode = 'update'):
                         new_items[city].append((city,url.strip(),punish_page.strip(),punish_url.strip(),dates_trans(punish_date),max_count + 1))
                         max_count += 1 
                 ss.close()
-            else:
-                print 'plase make sure the mode: update or init'
-    if mode == 'init':
+    if init:
         from db_api import init_table
         init_table()
-        
     return new_items
     
 def regex_soup_test():
@@ -172,8 +169,17 @@ def regex_soup_test():
     print punish_items,punish_dates
            
 if __name__ == '__main__':
-    crawler(include = ['guiyang','kunming'],mode = 'init')
-#     regex_soup_test()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-init','--init', dest='init', action='store_true', default=False)
+    parser.add_argument('-include','--include', dest='include', nargs='*', default = [])
+    parser.add_argument('-exclude','--exclude', dest='exclude', nargs='*', default = [])
+    args = parser.parse_args()
+    arg_dict = vars(args)
+    print arg_dict
+    crawler(include = arg_dict['include'],\
+            exclude = arg_dict['exclude'],\
+            init = arg_dict['init'])
 
 
     
