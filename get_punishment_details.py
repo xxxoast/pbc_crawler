@@ -116,7 +116,10 @@ def create_punishment_fiels(dbapi,city,des_path):
         public_html = get_js_html(record.punishment_item_url)
         soup = BeautifulSoup(public_html,'lxml')
 #         tag = soup.find(['p','span','td'],text = public_table_kw)
-        tag = soup.find(is_table_td)
+        tags = soup.find_all(is_table_td)
+        tag  = None
+        if len(tags) > 0:
+            tag = tags[-1]
         link_tag  = soup.find('a',text = link_kw,attrs={'href':href_kw})
 #         case 2: is table , like beijing
         if tag:

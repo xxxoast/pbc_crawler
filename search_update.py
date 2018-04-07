@@ -5,12 +5,13 @@ from db_api import Punishment
 import pandas as pd
 import time
 
+
 def get_today():
     t = time.localtime()
     return t.tm_year * 10000 + t.tm_mon * 100 + t.tm_mday
 
 def search_update(update_date,include = [],exclude = []):
-    crawler(include = include,exclude = exclude,mode = 'update')
+    crawler(include = include,exclude = exclude,init = False)
     dbapi = Punishment()
     dbapi.create_table()
     sql = '''

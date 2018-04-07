@@ -147,7 +147,7 @@ def crawler(include = [],exclude = [],init = False):
                 for (punish_page,punish_url,punish_date) in download_urls:
                     used_to = ss.query(dbapi.table_struct).filter_by(punishment_item_url = punish_url.strip()).scalar()
                     if used_to is None:
-                        dbapi.insert_listlike((city,url.strip(),punish_page.strip(),punish_url.strip(),dates_trans(punish_date),max_count + 1))
+                        dbapi.insert_listlike(dbapi.table_struct,(city,url.strip(),punish_page.strip(),punish_url.strip(),dates_trans(punish_date),max_count + 1))
                         new_items[city].append((city,url.strip(),punish_page.strip(),punish_url.strip(),dates_trans(punish_date),max_count + 1))
                         max_count += 1 
                 ss.close()

@@ -4,3 +4,4 @@ encoding/get_dynamic_html.py=utf-8
 encoding/get_punishment_details.py=utf-8
 encoding/get_punishment_urls.py=utf-8
 encoding/search_update.py=utf-8
+encoding/text_analysis.py=utf-8
