@@ -18,7 +18,7 @@ public_table_kw = re.compile(ur'违[法规反]行为\s*(类型|内容)')
 payment_kw = re.compile(ur'(网络支付)|(预付卡)|(银行卡)|(收单)|(备付金)|(票据)|(商户)|(支付服务管理)|([清结]算)|(账户)')
 unpayment_kw = re.compile(ur'(空头支票)|(现金)|(残损币)|(假币)|(准备金)|(统计)|(国库)|(反洗钱)|(身份识别)|(外汇)|(消费者)|(征信)')
 content_kw = re.compile(ur'违[法规](行为){0,1}\s*(类型|内容){0,1}')
-date_kw = re.compile(ur'([0-9]{2,4})[\u4e00-\u9fa5/\\-]?([0-9]{1,2})[\u4e00-\u9fa5/\\-]?([0-9]{1,2})')
+date_kw = re.compile(ur'([0-9]{2,4})[\u4e00-\u9fa5/\\.-]?([0-9]{1,2})[\u4e00-\u9fa5/\\.-]?([0-9]{1,2})')
 doc_kw     = re.compile(ur'.((docx{0,1})|(wps)|(xls)|(xlsx))$')
 amount_kw  = re.compile(ur'([1-9][0-9，,.]*万{0,1})元')
 sum_amount_kw = re.compile(ur'[合总]计[\u4e00-\u9fa5]*([1-9][0-9，,.]*万{0,1})元')
@@ -40,12 +40,11 @@ def parse_pdf(infile,dbapi,update_date = None):
     
 def str2float(text):
     no_comma = comma_kw.sub('',text)
-    no_spot  = no_comma.split('.')[0]
     multiply = 1
     if tenk_kw.search(text):
-        no_spot = tenk_kw.sub('',no_spot)
+        no_10k = tenk_kw.sub('',no_comma)
         multiply = 10000
-    return multiply * float(no_spot)
+    return multiply * float(no_10k)
     
 def get_punishment_amount(text):
     total = [ i for i in sum_amount_kw.findall(text) if len(i) > 0]
@@ -136,8 +135,8 @@ def convert_docs_to_htmls(include,exclude):
             print ifile
             infile = os.path.join(root,ifile) 
             desfile = doc_kw.sub('.html',infile)
-#             if not os.path.exists(desfile):
-            subprocess.call(r'/usr/bin/unoconv -f html -o {} {}'.format(desfile,infile).split(),shell=False)
+            if not os.path.exists(desfile):
+                subprocess.call(r'/usr/bin/unoconv -f html -o {} {}'.format(desfile,infile).split(),shell=False)
 
 #2.remove extra rows of table before head
 def precess_htmls(include,exclude):
@@ -186,9 +185,9 @@ def dumpdb(include,exclude,update_date = None):
                 parse_html(infile,dbapi,ss,update_date)
                         
 def update_publication(include = [], exclude = [], update_date = None):    
-    convert_docs_to_htmls(include,exclude)
-#     precess_htmls(include,exclude)
-#     dumpdb(include,exclude,update_date)
+#     convert_docs_to_htmls(include,exclude)
+    precess_htmls(include,exclude)
+    dumpdb(include,exclude,update_date)
     
 
 def remove_invalid():
