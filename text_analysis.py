@@ -3,21 +3,23 @@
 import os
 import pandas as pd
 import numpy as np
+import shutil
 from bs4 import BeautifulSoup
 import subprocess
 import re
 import pdftables_api
 
 from db_api import Publication
+from get_punishment_urls import valid_city
 
 root_path = r'/home/xudi/tmp/punishment_source'
 
-public_table_kw = re.compile(ur'违法行为\s*(类型|内容){0,1}')
-payment_kw = re.compile(ur'(网络支付)|(预付卡)|(银行卡)|(收单)|(备付金)|(票据)|(商户)|(支付服务管理)|(结算)|(账户)')
+public_table_kw = re.compile(ur'违[法规反]行为\s*(类型|内容)')
+payment_kw = re.compile(ur'(网络支付)|(预付卡)|(银行卡)|(收单)|(备付金)|(票据)|(商户)|(支付服务管理)|([清结]算)|(账户)')
 unpayment_kw = re.compile(ur'(空头支票)|(现金)|(残损币)|(假币)|(准备金)|(统计)|(国库)|(反洗钱)|(身份识别)|(外汇)|(消费者)|(征信)')
 content_kw = re.compile(ur'违[法规](行为){0,1}\s*(类型|内容){0,1}')
-chinese_kw = re.compile(ur'[\u4e00-\u9fa5]')
-doc_kw     = re.compile(ur'.(docx{0,1})|(wps)|(xls)|(xlsx)$')
+date_kw = re.compile(ur'([0-9]{2,4})[\u4e00-\u9fa5/\\-]?([0-9]{1,2})[\u4e00-\u9fa5/\\-]?([0-9]{1,2})')
+doc_kw     = re.compile(ur'.((docx{0,1})|(wps)|(xls)|(xlsx))$')
 amount_kw  = re.compile(ur'([1-9][0-9，,.]*万{0,1})元')
 sum_amount_kw = re.compile(ur'[合总]计[\u4e00-\u9fa5]*([1-9][0-9，,.]*万{0,1})元')
 tenk_kw    = re.compile(ur'万')
@@ -25,10 +27,17 @@ comma_kw   = re.compile(ur'[,，]')
 empty = re.compile('[ \n\t/-]')
 
 is_replaceble = lambda x: isinstance(x,str) or isinstance(x,unicode)
-date_f = lambda x: int(x[:4]) * 10000 + int(x[4:-2]) * 100 + int(x[-2:])
+def date_f(x):
+    year,month,day = date_kw.findall(x)[0]
+    return 10000 * int(year) + 100 * int(month) + int(day) 
 
-is_invalid_file = lambda x: x.endswith('.et') or x.endswith('.tif')
+is_invalid_file = lambda x: x.endswith('.et') or x.endswith('.tif') or x.endswith('.png') 
 
+def parse_pdf(infile,dbapi,update_date = None):
+    outfile = infile.replace('.pdf','.csv')
+    c = pdftables_api.Client('k8hrttpelsyi')
+    c.csv(infile,outfile)
+    
 def str2float(text):
     no_comma = comma_kw.sub('',text)
     no_spot  = no_comma.split('.')[0]
@@ -76,22 +85,25 @@ def htmlpath2txt(htmlpath):
             rows.append(line)
     return ''.join(rows)
 
-def parse_html(infile,dbapi,update_date = None):
+def parse_html(infile,dbapi,ss,update_date = None):
     city,index,date = infile.split('/')[-2],infile.split('/')[-1].split('_')[0],int(infile.split('/')[-1].split('_')[1].split('.')[0])  
-    ss = dbapi.get_session()
-    has_stored = ss.query(dbapi.table_struct.index).filter_by(city = city,index=index).scalar()
+    has_stored = ss.query(dbapi.table_struct.index).filter_by(city = city,index=index).first()
     if has_stored:
-        ss.close()
         return 
     if update_date and update_date > date:
-        ss.close()
         return
     htmltxt = htmlpath2txt(infile)
     soup = BeautifulSoup(htmltxt,'lxml')
-    tag = soup.find_all(is_table_td)[-1]
+    tags = soup.find_all(is_table_td)
+    if len(tags) > 0:
+        tag = tags[0]
+    else:
+        return 
     tag = tag.find_parent('table')
     df = pd.read_html(tag.prettify())[0]
-    df = df.applymap(lambda x:re.sub(empty,'',x) if is_replaceble(x) else x)
+    df = df.applymap(lambda x:empty.sub('',x) if is_replaceble(x) else x)
+    df = df.fillna(method = 'pad')
+    df = df.fillna('')
     if str(df.columns[0]) == '0':
         df.columns = df.iloc[0].values
         df.drop([0,],axis = 0,inplace = True)
@@ -100,69 +112,123 @@ def parse_html(infile,dbapi,update_date = None):
     is_payment = df.ix[:,col_index].apply(lambda x: True if payment_kw.search(x) else False)
     not_payment = df.ix[:,col_index].apply(lambda x: True if unpayment_kw.search(x) else False)
     df = df[ (is_payment) & np.logical_not(not_payment)]
-    df = df.fillna('')
     keywords = df.ix[:,col_index].apply(get_violation_kw)
     db_table_columns = dbapi.get_column_names(dbapi.table_struct) 
     for row_index,row in df.iterrows():
         amount = get_punishment_amount(row[df.columns[punish_index]]) / 10000
-        arglist = flatten((city,index,row[df.columns[1:6]].values,
-                                   date_f(chinese_kw.sub('',row[df.columns[6]])),
+        arglist = flatten((city,index,row[df.columns[col_index-2:col_index+3]].values,
+                                   date_f(row[df.columns[col_index+3]]),
                                    amount,keywords[row_index],row[df.columns[-1]]))
         argdict = dict(zip(db_table_columns,arglist))
-        ss.add(dbapi.table_struct(**argdict))
+        ss.merge(dbapi.table_struct(**argdict))
         ss.commit()
-    ss.close()
     return 
 
-def test_html(dbapi):    
-    infile = r'/home/xudi/tmp/punishment_source/beijing/0_20180320.html'
-    parse_html(infile,dbapi)
-
-def parse_doc(infile,dbapi,update_date = None):
-    desfile = doc_kw.sub('.html',infile)
-    city,index,date = infile.split('/')[-2],infile.split('/')[-1].split('_')[0],int(infile.split('/')[-1].split('_')[1].split('.')[0])  
-    ss = dbapi.get_session()
-    has_stored = ss.query(dbapi.table_struct.index).filter_by(city = city,index=index).scalar()
-    ss.close()
-    if not has_stored:
-        subprocess.call(r'/usr/bin/unoconv -f html -o {} {}'.format(desfile,infile).split(),shell=False)
-        if os.path.exists(desfile):
-            parse_html(desfile,dbapi)
-
-def parse_pdf(infile,dbapi,update_date = None):
-    outfile = infile.replace('.pdf','.csv')
-    c = pdftables_api.Client('k8hrttpelsyi')
-    c.csv(infile,outfile)
-    
-def update_publication(update_date = None):    
-    dbapi = Publication()
-    dbapi.create_table()
-    #convert doc/docx/xls/xlsx/wps to html
+#1.convert doc/docx/xls/xlsx/wps to html
+def convert_docs_to_htmls(include,exclude):
     print 'step 1, convert docs to html'
     for root, dirs, files in os.walk(root_path):
-        print root.split('/')[-1]
+        city = root.split('/')[-1]
+        if not valid_city(city,include,exclude):
+            continue
+        print city
         for ifile in filter(lambda x: doc_kw.search(x) is not None,files):
             print ifile
             infile = os.path.join(root,ifile) 
             desfile = doc_kw.sub('.html',infile)
-            if not os.path.exists(desfile):
-                subprocess.call(r'/usr/bin/unoconv -f html -o {} {}'.format(desfile,infile).split(),shell=False)
-                
-    print 'step 2, parse html, store into db'
+#             if not os.path.exists(desfile):
+            subprocess.call(r'/usr/bin/unoconv -f html -o {} {}'.format(desfile,infile).split(),shell=False)
+
+#2.remove extra rows of table before head
+def precess_htmls(include,exclude):
     for root, dirs, files in os.walk(root_path):
-        print root.split('/')[-1]
+        city = root.split('/')[-1]
+        if not valid_city(city,include,exclude):
+            continue
+        print city
         for ifile in filter(lambda x: (not x.startswith('.')) and x.endswith('.html'),files):
             print ifile
             infile = os.path.join(root,ifile)
             if infile.endswith('.html'):
-                parse_html(infile,dbapi,update_date)
+                soup,rewrite = None,False
+                with open(infile,'r') as fin:
+                    buffer = ''.join(fin.readlines())
+                    soup = BeautifulSoup(buffer,'lxml')
+                    td_tags = soup.find_all(is_table_td)
+                    if len(td_tags) > 0:
+                        td_tag = td_tags[0]
+                    else:
+                        continue
+                    tr_tag = td_tag.find_parent('tr')
+                    previous_trs = tr_tag.find_previous_siblings('tr') 
+                    if len(previous_trs) > 0:
+                        rewrite = True
+                        for tr in previous_trs:
+                            tr.extract()
+                if rewrite:
+                    with open(infile,'w') as fout:
+                        fout.write(soup.prettify(encoding='utf-8'))
 
-            
+#3.dumpdb
+def dumpdb(include,exclude,update_date = None):
+    dbapi = Publication()
+    dbapi.create_table()
+    ss = dbapi.get_session()
+    for root, dirs, files in os.walk(root_path):
+        city = root.split('/')[-1]
+        if not valid_city(city,include,exclude):
+            continue
+        print city
+        for ifile in filter(lambda x: (not x.startswith('.')) and x.endswith('.html'),files):
+            print ifile
+            infile = os.path.join(root,ifile)
+            if infile.endswith('.html'):
+                parse_html(infile,dbapi,ss,update_date)
+                        
+def update_publication(include = [], exclude = [], update_date = None):    
+    convert_docs_to_htmls(include,exclude)
+#     precess_htmls(include,exclude)
+#     dumpdb(include,exclude,update_date)
+    
+
+def remove_invalid():
+    for root, dirs, files in os.walk(root_path):
+        print root.split('/')[-1]
+        for ifile in filter(lambda x: x.endswith('..html'),files):
+            infile = os.path.join(root,ifile)
+            os.remove(infile)
+
+def test():
+    infile = r'/home/xudi/tmp/punishment_source/nanning/56_20160406.html'
+    soup,rewrite = None,False
+    with open(infile,'r') as fin:
+        buffer = ''.join(fin.readlines())
+        soup = BeautifulSoup(buffer,'lxml')
+        td_tags = soup.find_all(is_table_td)
+        if len(td_tags) > 0:
+            td_tag = td_tags[0]
+        else:
+            print 'fuck'
+            return 
+        tr_tag = td_tag.find_parent('tr')
+        previous_trs = tr_tag.find_previous_siblings('tr') 
+        if len(previous_trs) > 0:
+            rewrite = True
+            for tr in previous_trs:
+                tr.extract()
+    if rewrite:
+        with open(infile,'w') as fout:
+            fout.write(soup.prettify(encoding='utf-8'))
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-date','--date', dest='date', nargs='?', default = None)
+    parser.add_argument('-include','--include', dest='include', nargs='*', default = [])
+    parser.add_argument('-exclude','--exclude', dest='exclude', nargs='*', default = [])
     args = parser.parse_args()
     arg_dict = vars(args)
-    print update_publication(arg_dict['date'])
-    
+    update_publication(include = arg_dict['include'],\
+                       exclude = arg_dict['exclude'],\
+                       update_date = arg_dict['date'])
+    print 'done!'

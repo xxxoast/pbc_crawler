@@ -15,9 +15,9 @@ unicode2utf8 = lambda x: x.encode('utf8') if isinstance(x,unicode) else x
 dates_trans = lambda x: ''.join(x.split('-'))
 
 #init 
-key_word_outer = '政务公开目录'
+key_word_outer = re.compile(ur'^(政务)?公开目录')
 key_word_inner = re.compile(ur'行政处罚(公示){0,1}')
-key_word_punish = re.compile(ur'(((行政){0,1}(处罚|执法)(的)*(信息){0,1}(公示|公示表|表)[\s]*)|([1-9]+号))')
+key_word_punish = re.compile(ur'(((行政){0,1}(处罚|执法)(的)*(信息){0,1}(公示|公示表|表)[\s]*)|([1-9][0-9]*号))')
 key_word_date  = re.compile(ur'^20[0-9]{2}-[0-9]{1,2}-[0-9]{1,2}$')
     
 HEADERS = {
@@ -159,7 +159,7 @@ def crawler(include = [],exclude = [],init = False):
 def regex_soup_test():
     html = ''' '''
     soup = BeautifulSoup(html,'lxml')
-    key_word_punish = re.compile(ur'(((行政){0,1}处罚(的)*(信息){0,1}(公示|公示表|表))|(第{0,1}[0-9]+号))')
+    key_word_punish = re.compile(ur'(((行政){0,1}处罚(的)*(信息){0,1}(公示|公示表|表))|(第{0,1}[1-9][0-9]*号))')
     key_word_date  = re.compile(ur'20[0-9]{2}-[0-9]{1,2}-[0-9]{1,2}')
     
     punish_items_tr = [ i.parent for i in soup.find_all('td',text = key_word_punish) if i.parent ]
