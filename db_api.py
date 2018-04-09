@@ -32,7 +32,33 @@ class Punishment(DB_BASE):
         
     def create_table(self):
         self.table_struct = self.quick_map(self.table_obj)
+ 
+
+class Publication(DB_BASE):
+    
+    def __init__(self):
+        db_name = 'pbc'
+        table_name = 'publication'
+        super(Publication, self).__init__(db_name)
+
+        self.table_obj = Table(table_name, self.meta,
+                                  Column('city', String(64),primary_key = True),
+                                  Column('index',Integer,primary_key = True),
+                                  Column('corpname',String(256)),
+                                  Column('pubnumber',String(128)),
+                                  Column('violatype',String(128)),
+                                  Column('violacontent',String(512)),
+                                  Column('whodid',String(128)),
+                                  Column('update_date',Integer),
+                                  Column('amount',Float),
+                                  Column('keywords',String(64)),
+                                  Column('abstract',String(256))
+                                  )
         
+    def create_table(self):
+        self.table_struct = self.quick_map(self.table_obj)
+     
+
 def get_cities():
     dbapi = Punishment()
     dbapi.create_table()
@@ -42,7 +68,7 @@ def get_cities():
     ss.close()
     return cities
 
-def init_table():        
+def init_punishment_table():        
     dbapi = Punishment()
     dbapi.create_table()
     src_path = r'/home/xudi/tmp/pbc_punishment'
@@ -60,10 +86,7 @@ def init_table():
                     
                     
 if __name__ == '__main__':
-    dbapi = Punishment()
+    dbapi = Publication()
     dbapi.create_table()
-    ss = dbapi.session()
-    count = ss.query(func.count(dbapi.table_struct.index)).filter_by(city = 'beijing').scalar()
-    ss.close()
-    print count
+    
     

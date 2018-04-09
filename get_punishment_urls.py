@@ -152,7 +152,7 @@ def crawler(include = [],exclude = [],init = False):
                         max_count += 1 
                 ss.close()
     if init:
-        from db_api import init_table
+        from db_api import init_punishment_table as init_table
         init_table()
     return new_items
     
