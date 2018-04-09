@@ -42,9 +42,9 @@ def str2float(text):
     no_comma = comma_kw.sub('',text)
     multiply = 1
     if tenk_kw.search(text):
-        no_10k = tenk_kw.sub('',no_comma)
+        no_comma = tenk_kw.sub('',no_comma)
         multiply = 10000
-    return multiply * float(no_10k)
+    return multiply * float(no_comma)
     
 def get_punishment_amount(text):
     total = [ i for i in sum_amount_kw.findall(text) if len(i) > 0]
@@ -99,7 +99,8 @@ def parse_html(infile,dbapi,ss,update_date = None):
     else:
         return 
     tag = tag.find_parent('table')
-    df = pd.read_html(tag.prettify())[0]
+    dfs = pd.read_html(tag.prettify())
+    df = dfs[0]
     df = df.applymap(lambda x:empty.sub('',x) if is_replaceble(x) else x)
     df = df.fillna(method = 'pad')
     df = df.fillna('')
