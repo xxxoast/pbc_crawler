@@ -3,39 +3,32 @@
 import os
 import pandas as pd
 import numpy as np
-import shutil
 from bs4 import BeautifulSoup
 import subprocess
 import re
 import pdftables_api
+import itertools
 
 from db_api import Publication
-from get_punishment_urls import valid_city,unicode2utf8
-from get_punishment_details import is_table_td
+from misc import valid_city,unicode2utf8
+from misc import is_table_td,dates_trans 
 
 root_path = r'/home/xudi/tmp/punishment_source'
 
-payment_kw = re.compile(ur'(网络支付)|(预付卡)|(银行卡)|(收单)|(备付金)|(票据)|(商户)|(支付服务管理)|([清结]算)|(账户)')
-unpayment_kw = re.compile(ur'(空头支票)|(现金)|(残损币)|(假币)|(准备金)|(统计)|(国库)|(反洗钱)|(身份识别)|(外汇)|(消费者)|(征信)')
+payment_kw = re.compile(ur'(网络支付)|(预付卡)|(银行卡)|(收单)|(备付金)|(票据)|(支票)|(账户)|(商户)|(支付服务管理)|([清结]算)|(支付)')
+unpayment_kw = re.compile(ur'(现金)|(残损币)|(假币)|(准备金)|(统计)|(国库)|(反洗钱)|(身份识别)|(外汇)|(消费者)|(征信)')
 content_kw = re.compile(ur'违[法规](行为){0,1}\s*(类型|内容){0,1}')
 date_kw = re.compile(ur'[\u4e00-\u9fa5/\\.-]')
 doc_kw     = re.compile(ur'.((docx{0,1})|(wps)|(xls)|(xlsx))$')
-amount_kw  = re.compile(ur'([1-9][0-9，,.]*万?)元?')
-sum_amount_kw = re.compile(ur'[合总]计[\u4e00-\u9fa5]*([1-9][0-9，,.]*万?)元?')
+amount_kw  = re.compile(ur'(?:(?:([1-9][0-9，,.]*万?)元)|(?:罚款([1-9][0-9，,.]*万?)元?))')
+# amount_kw  = re.compile(ur'([1-9][0-9，,.]*万?)元')
+sum_amount_kw = re.compile(ur'[合总]计[\u4e00-\u9fa5]*([1-9][0-9，,.]*万?)元')
 tenk_kw    = re.compile(ur'万')
 comma_kw   = re.compile(ur'[,，]')
 empty = re.compile('[ \n\t/-]')
 
 is_invalid_file = lambda x: x.endswith('.et') or x.endswith('.tif') or x.endswith('.png') 
 is_replaceble = lambda x: isinstance(x,str) or isinstance(x,unicode)
-
-def date_f(x):
-    x = date_kw.sub('',x)
-    try:
-        year,month,day = int(x[:4]),int(x[4:-2]),int(x[-2:])
-        return 10000 * int(year) + 100 * int(month) + int(day)
-    except:
-        return None 
     
 def parse_pdf(infile,dbapi,update_date = None):
     outfile = infile.replace('.pdf','.csv')
@@ -49,15 +42,6 @@ def str2float(text):
         no_comma = tenk_kw.sub('',no_comma)
         multiply = 10000
     return multiply * float(no_comma)
-    
-def get_punishment_amount(text):
-    total = [ i for i in sum_amount_kw.findall(text) if len(i) > 0]
-    if len(total) > 0:
-        total = str2float(total[-1])
-        return total
-    else:
-        each = [ i for i in amount_kw.findall(text) if len(i) > 0]
-        return sum([str2float(i) for i in each])
 
 def flatten(l):    
     for el in l:    
@@ -65,7 +49,17 @@ def flatten(l):
             for sub in flatten(el):    
                 yield sub    
         else:    
-            yield el 
+            yield el
+            
+def get_punishment_amount(text):
+    total = [ i for i in sum_amount_kw.findall(text) if len(i) > 0]
+    if len(total) > 0:
+        total = str2float(total[-1])
+        return total
+    else:
+        each = [ i for i in flatten(amount_kw.findall(text)) if len(i) > 0]
+        return sum([str2float(i) for i in each])
+
 
 def get_violation_kw(x):
     matched = [ j for i in payment_kw.findall(x) for j in i if len(j) > 0]
@@ -86,6 +80,7 @@ def htmlpath2txt(htmlpath):
     return ''.join(rows)
 
 def parse_html(infile,dbapi,ss,update_date = None):
+#     print infile
     city,index,publish_date = infile.split('/')[-2],infile.split('/')[-1].split('_')[0],int(infile.split('/')[-1].split('_')[1].split('.')[0])  
     has_stored = ss.query(dbapi.table_struct.index).filter_by(city = city,index=index).first()
     if has_stored:
@@ -112,6 +107,7 @@ def parse_html(infile,dbapi,ss,update_date = None):
         df.drop([0,],axis = 0,inplace = True)
     col_index = locat_content_column(df.columns)
     punish_index = col_index + 1
+    #去尾
     valid_rows = df[df.columns[col_index-1:col_index + 3]].\
                     apply(lambda x: np.logical_and(pd.notnull(x) , len(unicode2utf8(x)) > 0))
     df = df.loc[ valid_rows.all(axis = 1) ]
@@ -127,7 +123,7 @@ def parse_html(infile,dbapi,ss,update_date = None):
     db_table_columns = dbapi.get_column_names(dbapi.table_struct) 
     for row_index,row in df.iterrows():
         amount = get_punishment_amount(row[df.columns[punish_index]]) / 10000
-        decision_date = date_f(row[df.columns[col_index+3]])
+        decision_date = dates_trans(row[df.columns[col_index+3]])
         arglist = flatten((city,index,row[df.columns[col_index-2:col_index+3]].values,
                                    decision_date if decision_date else publish_date,
                                    amount,keywords.loc[row_index],row[df.columns[-1]]))
@@ -157,6 +153,7 @@ def precess_htmls(include,exclude):
         if not valid_city(city,include,exclude):
             continue
         print city
+        #去头
         for ifile in filter(lambda x: (not x.startswith('.')) and x.endswith('.html'),files):
             infile = os.path.join(root,ifile)
             if infile.endswith('.html'):
@@ -210,26 +207,11 @@ def remove_invalid():
             os.remove(infile)
 
 def test():
-    infile = r'/home/xudi/tmp/punishment_source/nanning/56_20160406.html'
-    soup,rewrite = None,False
-    with open(infile,'r') as fin:
-        buffer = ''.join(fin.readlines())
-        soup = BeautifulSoup(buffer,'lxml')
-        td_tags = soup.find_all(is_table_td)
-        if len(td_tags) > 0:
-            td_tag = td_tags[0]
-        else:
-            print 'fuck'
-            return 
-        tr_tag = td_tag.find_parent('tr')
-        previous_trs = tr_tag.find_previous_siblings('tr') 
-        if len(previous_trs) > 0:
-            rewrite = True
-            for tr in previous_trs:
-                tr.extract()
-    if rewrite:
-        with open(infile,'w') as fout:
-            fout.write(soup.prettify(encoding='utf-8'))
+    infile = r'/home/xudi/tmp/punishment_source/shanghai/148_20170824.html'
+    dbapi = Publication()
+    dbapi.create_table()
+    ss = dbapi.get_session()
+    parse_html(infile, dbapi, ss)
 
 if __name__ == '__main__':
     print '--->>> text analysis!'

@@ -28,20 +28,15 @@ unicode2cp936 = lambda x: x.encode('cp936') if isinstance(x,unicode) else x
 content_pattern = re.compile(r'[Cc]ontent-[Tt]ype:\s*([a-zA-Z]+/[a-zA-Z\-]+)')
 # delete_span = re.compile(ur'<span[^>]*>(.*?)</span>')
 # html = delete_span.sub(lambda x: x.group(1),html )
-public_table_kw = re.compile(ur'违[法规反]行为(类型|内容)')
 link_kw = re.compile(ur'((行政){0,1}处罚(信息){0,1}){0,1}(公示表|公示|表){0,1}|([1-9]+\d*号)')
 href_kw = re.compile(ur'.(xls|xlsx|doc|docx|pdf|tif|jpg|jpeg|bmp|wps|et)$')
-empty = re.compile(ur'\s')
 # img_kw  = re.compile(ur'.(tif|jpg|jpeg|bmp)$')
-
-def is_table_td(tag):
-    if tag.name == 'td':
-        text = empty.sub('',tag.text)
-        return public_table_kw.search(text)
-    return False
 
 get_city = lambda x: x.split('-')[0]
 is_doc_url = lambda x: href_kw.search(x)
+
+from misc import is_table_td
+from misc import unicode2utf8
 
 def alloc_logger(name, filename, mode = 'w',level=None, format=None):
     if level == None:
@@ -97,7 +92,8 @@ def create_punishment_fiels(dbapi,city,des_path):
         return 
     print 'publication url = ',cursor.first().publication_url
     logger.info( unicode2utf8(u'publication url = {}'.format(cursor.first().publication_url)))
-    has_download = set([ int(i.split('.')[0].split('_')[0])  for i in  os.listdir(os.path.join(root_path,city)) ])
+    has_download = set([ int(i.split('.')[0].split('_')[0])  for i in  \
+                            filter(lambda x: not x.startswith('.'),os.listdir(os.path.join(root_path,city))) ])
     cnt = 0
     city_root_url = 'http://{}.pbc.gov.cn'.format(city)
     for record in cursor.all():

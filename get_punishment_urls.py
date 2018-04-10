@@ -10,23 +10,16 @@ from get_dynamic_html import get_js_html,download_js
 from bs4 import BeautifulSoup
 from sqlalchemy.sql import func
 
+from misc import valid_city,unicode2utf8
+
 #init 
-date_kw = re.compile(ur'[\u4e00-\u9fa5/\\.-]')
 key_word_outer = re.compile(ur'^(政务)?公开目录')
 key_word_inner = re.compile(ur'行政处罚(公示){0,1}')
 key_word_punish = re.compile(ur'(((行政){0,1}(处罚|执法)(的)*(信息){0,1}(公示|公示表|表)[\s]*)|([1-9][0-9]*号))')
 key_word_date  = re.compile(ur'^20[0-9]{2}-[0-9]{1,2}-[0-9]{1,2}$')
 
-unicode2utf8 = lambda x: x.encode('utf8') if isinstance(x,unicode) else x
-def dates_trans(x):
-    x = date_kw.sub('',x)
-    try:
-        year,month,day = int(x[:4]),int(x[4:-2]),int(x[-2:])
-        return 10000 * int(year) + 100 * int(month) + int(day)
-    except:
-        return None  
+from misc import dates_trans 
 
- 
 HEADERS = {
     'X-Requested-With': 'XMLHttpRequest',
     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0 ',
@@ -116,14 +109,6 @@ def find_public_page(root_url,update_date ):
         return []
     return download_urls
     
-    
-def valid_city(city,include,exclude):
-    if len(include) > 0:
-        return True if city in include else False
-    if len(exclude) > 0:
-        return True if city not in exclude else False
-    return True
-
 def crawler(include = [],exclude = [],init = False):
     from db_api import Punishment
     dbapi = Punishment()
