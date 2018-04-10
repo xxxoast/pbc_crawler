@@ -11,10 +11,10 @@ import pdftables_api
 
 from db_api import Publication
 from get_punishment_urls import valid_city,unicode2utf8
+from get_punishment_details import is_table_td
 
 root_path = r'/home/xudi/tmp/punishment_source'
 
-public_table_kw = re.compile(ur'违[法规反]行为\s*(类型|内容)')
 payment_kw = re.compile(ur'(网络支付)|(预付卡)|(银行卡)|(收单)|(备付金)|(票据)|(商户)|(支付服务管理)|([清结]算)|(账户)')
 unpayment_kw = re.compile(ur'(空头支票)|(现金)|(残损币)|(假币)|(准备金)|(统计)|(国库)|(反洗钱)|(身份识别)|(外汇)|(消费者)|(征信)')
 content_kw = re.compile(ur'违[法规](行为){0,1}\s*(类型|内容){0,1}')
@@ -77,9 +77,6 @@ def locat_content_column(columns):
         if reobj:
             return index
     return -1
-
-def is_table_td(tag):
-    return tag.name == 'td' and public_table_kw.search(tag.text)
 
 def htmlpath2txt(htmlpath):
     rows = []

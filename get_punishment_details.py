@@ -28,13 +28,17 @@ unicode2cp936 = lambda x: x.encode('cp936') if isinstance(x,unicode) else x
 content_pattern = re.compile(r'[Cc]ontent-[Tt]ype:\s*([a-zA-Z]+/[a-zA-Z\-]+)')
 # delete_span = re.compile(ur'<span[^>]*>(.*?)</span>')
 # html = delete_span.sub(lambda x: x.group(1),html )
-public_table_kw = re.compile(ur'违[法规反]行为\s*(类型|内容)')
+public_table_kw = re.compile(ur'违[法规反]行为(类型|内容)')
 link_kw = re.compile(ur'((行政){0,1}处罚(信息){0,1}){0,1}(公示表|公示|表){0,1}|([1-9]+\d*号)')
 href_kw = re.compile(ur'.(xls|xlsx|doc|docx|pdf|tif|jpg|jpeg|bmp|wps|et)$')
+empty = re.compile(ur'\s')
 # img_kw  = re.compile(ur'.(tif|jpg|jpeg|bmp)$')
 
 def is_table_td(tag):
-    return tag.name == 'td' and public_table_kw.search(tag.text)
+    if tag.name == 'td':
+        text = empty.sub('',tag.text)
+        return public_table_kw.search(text)
+    return False
 
 get_city = lambda x: x.split('-')[0]
 is_doc_url = lambda x: href_kw.search(x)
