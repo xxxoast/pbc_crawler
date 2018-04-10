@@ -10,7 +10,7 @@ import re
 import pdftables_api
 
 from db_api import Publication
-from get_punishment_urls import valid_city
+from get_punishment_urls import valid_city,unicode2utf8
 
 root_path = r'/home/xudi/tmp/punishment_source'
 
@@ -18,21 +18,25 @@ public_table_kw = re.compile(ur'违[法规反]行为\s*(类型|内容)')
 payment_kw = re.compile(ur'(网络支付)|(预付卡)|(银行卡)|(收单)|(备付金)|(票据)|(商户)|(支付服务管理)|([清结]算)|(账户)')
 unpayment_kw = re.compile(ur'(空头支票)|(现金)|(残损币)|(假币)|(准备金)|(统计)|(国库)|(反洗钱)|(身份识别)|(外汇)|(消费者)|(征信)')
 content_kw = re.compile(ur'违[法规](行为){0,1}\s*(类型|内容){0,1}')
-date_kw = re.compile(ur'([0-9]{2,4})[\u4e00-\u9fa5/\\.-]?([0-9]{1,2})[\u4e00-\u9fa5/\\.-]?([0-9]{1,2})')
+date_kw = re.compile(ur'[\u4e00-\u9fa5/\\.-]')
 doc_kw     = re.compile(ur'.((docx{0,1})|(wps)|(xls)|(xlsx))$')
-amount_kw  = re.compile(ur'([1-9][0-9，,.]*万{0,1})元')
-sum_amount_kw = re.compile(ur'[合总]计[\u4e00-\u9fa5]*([1-9][0-9，,.]*万{0,1})元')
+amount_kw  = re.compile(ur'([1-9][0-9，,.]*万?)元?')
+sum_amount_kw = re.compile(ur'[合总]计[\u4e00-\u9fa5]*([1-9][0-9，,.]*万?)元?')
 tenk_kw    = re.compile(ur'万')
 comma_kw   = re.compile(ur'[,，]')
 empty = re.compile('[ \n\t/-]')
 
-is_replaceble = lambda x: isinstance(x,str) or isinstance(x,unicode)
-def date_f(x):
-    year,month,day = date_kw.findall(x)[0]
-    return 10000 * int(year) + 100 * int(month) + int(day) 
-
 is_invalid_file = lambda x: x.endswith('.et') or x.endswith('.tif') or x.endswith('.png') 
+is_replaceble = lambda x: isinstance(x,str) or isinstance(x,unicode)
 
+def date_f(x):
+    x = date_kw.sub('',x)
+    try:
+        year,month,day = int(x[:4]),int(x[4:-2]),int(x[-2:])
+        return 10000 * int(year) + 100 * int(month) + int(day)
+    except:
+        return None 
+    
 def parse_pdf(infile,dbapi,update_date = None):
     outfile = infile.replace('.pdf','.csv')
     c = pdftables_api.Client('k8hrttpelsyi')
@@ -85,11 +89,11 @@ def htmlpath2txt(htmlpath):
     return ''.join(rows)
 
 def parse_html(infile,dbapi,ss,update_date = None):
-    city,index,date = infile.split('/')[-2],infile.split('/')[-1].split('_')[0],int(infile.split('/')[-1].split('_')[1].split('.')[0])  
+    city,index,publish_date = infile.split('/')[-2],infile.split('/')[-1].split('_')[0],int(infile.split('/')[-1].split('_')[1].split('.')[0])  
     has_stored = ss.query(dbapi.table_struct.index).filter_by(city = city,index=index).first()
     if has_stored:
         return 
-    if update_date and update_date > date:
+    if update_date and update_date > publish_date:
         return
     htmltxt = htmlpath2txt(infile)
     soup = BeautifulSoup(htmltxt,'lxml')
@@ -101,14 +105,24 @@ def parse_html(infile,dbapi,ss,update_date = None):
     tag = tag.find_parent('table')
     dfs = pd.read_html(tag.prettify())
     df = dfs[0]
+    df = df.dropna(axis = 1,how = 'all')
     df = df.applymap(lambda x:empty.sub('',x) if is_replaceble(x) else x)
-    df = df.fillna(method = 'pad')
-    df = df.fillna('')
+    if len(df.columns) < 5:
+        return 
     if str(df.columns[0]) == '0':
+        df.iloc[0] = df.iloc[0].fillna('')
         df.columns = df.iloc[0].values
         df.drop([0,],axis = 0,inplace = True)
     col_index = locat_content_column(df.columns)
     punish_index = col_index + 1
+    valid_rows = df[df.columns[col_index-1:col_index + 3]].\
+                    apply(lambda x: np.logical_and(pd.notnull(x) , len(unicode2utf8(x)) > 0))
+    df = df.loc[ valid_rows.all(axis = 1) ]
+    if len(df) == 0:
+        return
+    df = df.fillna(method = 'pad')
+    df = df.fillna('')
+    df.drop_duplicates(subset=[df.columns[col_index-1],df.columns[col_index-2]], keep='first', inplace=True)
     is_payment = df.ix[:,col_index].apply(lambda x: True if payment_kw.search(x) else False)
     not_payment = df.ix[:,col_index].apply(lambda x: True if unpayment_kw.search(x) else False)
     df = df[ (is_payment) & np.logical_not(not_payment)]
@@ -116,9 +130,10 @@ def parse_html(infile,dbapi,ss,update_date = None):
     db_table_columns = dbapi.get_column_names(dbapi.table_struct) 
     for row_index,row in df.iterrows():
         amount = get_punishment_amount(row[df.columns[punish_index]]) / 10000
+        decision_date = date_f(row[df.columns[col_index+3]])
         arglist = flatten((city,index,row[df.columns[col_index-2:col_index+3]].values,
-                                   date_f(row[df.columns[col_index+3]]),
-                                   amount,keywords[row_index],row[df.columns[-1]]))
+                                   decision_date if decision_date else publish_date,
+                                   amount,keywords.loc[row_index],row[df.columns[-1]]))
         argdict = dict(zip(db_table_columns,arglist))
         ss.merge(dbapi.table_struct(**argdict))
         ss.commit()
@@ -133,7 +148,6 @@ def convert_docs_to_htmls(include,exclude):
             continue
         print city
         for ifile in filter(lambda x: doc_kw.search(x) is not None,files):
-            print ifile
             infile = os.path.join(root,ifile) 
             desfile = doc_kw.sub('.html',infile)
             if not os.path.exists(desfile):
@@ -147,7 +161,6 @@ def precess_htmls(include,exclude):
             continue
         print city
         for ifile in filter(lambda x: (not x.startswith('.')) and x.endswith('.html'),files):
-            print ifile
             infile = os.path.join(root,ifile)
             if infile.endswith('.html'):
                 soup,rewrite = None,False
@@ -180,17 +193,18 @@ def dumpdb(include,exclude,update_date = None):
             continue
         print city
         for ifile in filter(lambda x: (not x.startswith('.')) and x.endswith('.html'),files):
-            print ifile
             infile = os.path.join(root,ifile)
             if infile.endswith('.html'):
                 parse_html(infile,dbapi,ss,update_date)
                         
 def update_publication(include = [], exclude = [], update_date = None):    
-#     convert_docs_to_htmls(include,exclude)
+    print '    --->>> convert_docs_to_htmls'
+    convert_docs_to_htmls(include,exclude)
+    print '    --->>> precess_htmls'
     precess_htmls(include,exclude)
+    print '    --->>> dumpdb'
     dumpdb(include,exclude,update_date)
     
-
 def remove_invalid():
     for root, dirs, files in os.walk(root_path):
         print root.split('/')[-1]
@@ -221,6 +235,7 @@ def test():
             fout.write(soup.prettify(encoding='utf-8'))
 
 if __name__ == '__main__':
+    print '--->>> text analysis!'
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-date','--date', dest='date', nargs='?', default = None)

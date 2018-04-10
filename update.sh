@@ -1,0 +1,3 @@
+python get_punishment_urls.py
+python get_details_urls.py
+python text_analysis.py

@@ -172,6 +172,7 @@ def test_download():
     download_js(url, u'（第13期）行政处罚信息公示表.pdf', 'application/octet-stream')
 
 if __name__ == '__main__':
+    print '--->>> download details!'
     get_punish_table()
 
                 

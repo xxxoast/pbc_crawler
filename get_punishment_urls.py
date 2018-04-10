@@ -4,22 +4,29 @@ import time
 import re
 import threading
 
-# coding : cp936
 import requests
 from urlparse import urljoin
 from get_dynamic_html import get_js_html,download_js
 from bs4 import BeautifulSoup
 from sqlalchemy.sql import func
 
-unicode2utf8 = lambda x: x.encode('utf8') if isinstance(x,unicode) else x
-dates_trans = lambda x: ''.join(x.split('-'))
-
 #init 
+date_kw = re.compile(ur'[\u4e00-\u9fa5/\\.-]')
 key_word_outer = re.compile(ur'^(政务)?公开目录')
 key_word_inner = re.compile(ur'行政处罚(公示){0,1}')
 key_word_punish = re.compile(ur'(((行政){0,1}(处罚|执法)(的)*(信息){0,1}(公示|公示表|表)[\s]*)|([1-9][0-9]*号))')
 key_word_date  = re.compile(ur'^20[0-9]{2}-[0-9]{1,2}-[0-9]{1,2}$')
-    
+
+unicode2utf8 = lambda x: x.encode('utf8') if isinstance(x,unicode) else x
+def dates_trans(x):
+    x = date_kw.sub('',x)
+    try:
+        year,month,day = int(x[:4]),int(x[4:-2]),int(x[-2:])
+        return 10000 * int(year) + 100 * int(month) + int(day)
+    except:
+        return None  
+
+ 
 HEADERS = {
     'X-Requested-With': 'XMLHttpRequest',
     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0 ',
@@ -147,8 +154,9 @@ def crawler(include = [],exclude = [],init = False):
                 for (punish_page,punish_url,punish_date) in download_urls:
                     used_to = ss.query(dbapi.table_struct).filter_by(punishment_item_url = punish_url.strip()).scalar()
                     if used_to is None:
-                        dbapi.insert_listlike(dbapi.table_struct,(city,url.strip(),punish_page.strip(),punish_url.strip(),dates_trans(punish_date),max_count + 1))
-                        new_items[city].append((city,url.strip(),punish_page.strip(),punish_url.strip(),dates_trans(punish_date),max_count + 1))
+                        new_record = (city,url.strip(),punish_page.strip(),punish_url.strip(),dates_trans(punish_date),max_count + 1)
+                        dbapi.insert_listlike(dbapi.table_struct,new_record)
+                        new_items[city].append(new_record)
                         max_count += 1 
                 ss.close()
     if init:
@@ -169,6 +177,7 @@ def regex_soup_test():
     print punish_items,punish_dates
            
 if __name__ == '__main__':
+    print '--->>> get punishment urls!'
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-init','--init', dest='init', action='store_true', default=False)
