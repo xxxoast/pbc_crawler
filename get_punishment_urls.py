@@ -12,6 +12,7 @@ from sqlalchemy.sql import func
 
 from misc import valid_city,unicode2utf8
 
+root_path = r'/home/xudi/tmp/pbc_punishment'
 #init 
 key_word_outer = re.compile(ur'^(政务)?公开目录')
 key_word_inner = re.compile(ur'行政处罚(公示){0,1}')
@@ -123,8 +124,7 @@ def crawler(include = [],exclude = [],init = False):
             new_items[city] = []
             if init:
                 download_urls = find_public_page(url,update_date = None)
-                des_path = '/media/xudi/coding/tmp/pbc_punishment'
-                des_path = os.path.join(des_path, '-'.join((city , str(len(download_urls)))))
+                des_path = os.path.join(root_path, '-'.join((city , str(len(download_urls)))))
                 with open(des_path,'w+') as fout:
                     for (punish_page,punish_url,punish_date) in download_urls:
                         s = ' '.join((city,url.strip(),punish_page.strip(),punish_url.strip(),str(dates_trans(punish_date))))

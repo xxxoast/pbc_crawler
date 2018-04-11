@@ -11,8 +11,9 @@ import pdftables_api
 from db_api import Publication
 from misc import valid_city,unicode2utf8
 from misc import is_table_td,dates_trans 
+from misc import empty
 
-root_path = r'/media/xudi/coding/tmp/punishment_source'
+root_path = r'/home/xudi/tmp/punishment_source'
 
 payment_kw = re.compile(ur'(网络支付)|(预付卡)|(银行卡)|(收单)|(备付金)|(票据)|(支票)|(账户)|(商户)|(支付服务管理)|([清结]算)|(支付)')
 unpayment_kw = re.compile(ur'(现金)|(残损币)|(假币)|(准备金)|(统计)|(国库)|(反洗钱)|(身份识别)|(外汇)|(消费者)|(征信)')
@@ -24,7 +25,6 @@ amount_kw  = re.compile(ur'(?:(?:([1-9][0-9，,.]*万?)元)|(?:罚款([1-9][0-9�
 sum_amount_kw = re.compile(ur'[合总]计[\u4e00-\u9fa5]*([1-9][0-9，,.]*万?)元')
 tenk_kw    = re.compile(ur'万')
 comma_kw   = re.compile(ur'[,，]')
-empty = re.compile('[ \n\t/-]')
 
 is_invalid_file = lambda x: x.endswith('.et') or x.endswith('.tif') or x.endswith('.png') 
 is_replaceble = lambda x: isinstance(x,str) or isinstance(x,unicode)

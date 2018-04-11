@@ -18,9 +18,9 @@ HEADERS = {
     'Referer': "http://www.pbc.gov.cn"
 }
 
-root_path = r'/media/xudi/coding/tmp/punishment_source'
+root_path = r'/home/xudi/tmp/punishment_source'
 download_path = r'/home/xudi/tmp/selenium_download'
-log_path = r'/media/xudi/coding/tmp/log'
+log_path = r'/home/xudi/tmp/log'
 
 unicode2utf8 = lambda x: x.encode('utf-8') if isinstance(x,unicode) else x
 unicode2cp936 = lambda x: x.encode('cp936') if isinstance(x,unicode) else x
@@ -28,7 +28,7 @@ unicode2cp936 = lambda x: x.encode('cp936') if isinstance(x,unicode) else x
 content_pattern = re.compile(r'[Cc]ontent-[Tt]ype:\s*([a-zA-Z]+/[a-zA-Z\-]+)')
 # delete_span = re.compile(ur'<span[^>]*>(.*?)</span>')
 # html = delete_span.sub(lambda x: x.group(1),html )
-link_kw = re.compile(ur'((行政){0,1}处罚(信息){0,1}){0,1}(公示表|公示|表){0,1}|([1-9]+\d*号)')
+link_kw = re.compile(ur'((行政){0,1}处罚(信息){0,1}){0,1}(公示表|公示|表){0,1}|(\d*号)')
 href_kw = re.compile(ur'.(xls|xlsx|doc|docx|pdf|tif|jpg|jpeg|bmp|wps|et)$')
 # img_kw  = re.compile(ur'.(tif|jpg|jpeg|bmp)$')
 
@@ -79,7 +79,7 @@ def dump_doc(page_url,des_path,text,fname,index,real_url,update_date):
         logger.info( ' '.join((text, fname)))
         shutil.move(unicode2utf8(os.path.join(download_path,fname)), outfile_path)
     except:
-        print ' ---> [invalid LINK]: ', page_url,fname
+        print ' ---> [invalid LINK Or FileMoveError]: ', page_url,fname
         logger.error(unicode2utf8(u'invalid link = {} {}'.format(page_url,fname)))
     
 def create_punishment_fiels(dbapi,city,des_path):
@@ -115,14 +115,15 @@ def create_punishment_fiels(dbapi,city,des_path):
             continue
         public_html = get_js_html(record.punishment_item_url)
         soup = BeautifulSoup(public_html,'lxml')
-#         tag = soup.find(['p','span','td'],text = public_table_kw)
         tags = soup.find_all(is_table_td)
         tag  = None
         if len(tags) > 0:
             tag = tags[-1]
         link_tag  = soup.find('a',text = link_kw,attrs={'href':href_kw})
+#         print 'tag = ',tag
+#         print 'link_tag = ',link_tag
 #         case 2: is table , like beijing
-        if tag:
+        if tag is not None:
             logger.info( unicode2utf8(u'table = {}'.format(record.punishment_item_url)))
             table_tag = tag.find_parent('table')
             soup = strip_tags(soup, ['span','p'])

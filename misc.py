@@ -10,13 +10,14 @@ def valid_city(city,include,exclude):
         return True if city not in exclude else False
     return True
 
-empty = re.compile(ur'\s')
+empty = re.compile(ur'[\s\xa0]*')
 public_table_kw = re.compile(ur'违[法规反]行为(类型|内容)')
 
 def is_table_td(tag):
     if tag.name == 'td':
         text = empty.sub('',tag.text)
-        return public_table_kw.search(text)
+        reobj = public_table_kw.search(text)
+        return True if reobj else False
     return False
 
 date_kw = re.compile(ur'[\u4e00-\u9fa5/\\.-]')
