@@ -127,14 +127,13 @@ def crawler(include = [],exclude = [],init = False):
                 des_path = os.path.join(des_path, '-'.join((city , str(len(download_urls)))))
                 with open(des_path,'w+') as fout:
                     for (punish_page,punish_url,punish_date) in download_urls:
-                        s = ' '.join((city,url.strip(),punish_page.strip(),punish_url.strip(),dates_trans(punish_date)))
+                        s = ' '.join((city,url.strip(),punish_page.strip(),punish_url.strip(),str(dates_trans(punish_date))))
                         fout.write(unicode2utf8(s))
                         fout.write('\n')
             else:
                 ss = dbapi.session()
                 max_count = ss.query(func.max(dbapi.table_struct.index)).filter_by(city = city).scalar() + 1
                 record = ss.query(dbapi.table_struct.update_date).filter_by(city = city).order_by(dbapi.table_struct.update_date.desc()).first()
-                print max_count,record.update_date
                 download_urls = find_public_page(url,record.update_date)
                 for (punish_page,punish_url,punish_date) in download_urls:
                     used_to = ss.query(dbapi.table_struct).filter_by(punishment_item_url = punish_url.strip()).scalar()
