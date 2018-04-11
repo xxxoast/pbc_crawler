@@ -7,13 +7,12 @@ from bs4 import BeautifulSoup
 import subprocess
 import re
 import pdftables_api
-import itertools
 
 from db_api import Publication
 from misc import valid_city,unicode2utf8
 from misc import is_table_td,dates_trans 
 
-root_path = r'/home/xudi/tmp/punishment_source'
+root_path = r'/media/xudi/coding/tmp/punishment_source'
 
 payment_kw = re.compile(ur'(网络支付)|(预付卡)|(银行卡)|(收单)|(备付金)|(票据)|(支票)|(账户)|(商户)|(支付服务管理)|([清结]算)|(支付)')
 unpayment_kw = re.compile(ur'(现金)|(残损币)|(假币)|(准备金)|(统计)|(国库)|(反洗钱)|(身份识别)|(外汇)|(消费者)|(征信)')
@@ -123,6 +122,8 @@ def parse_html(infile,dbapi,ss,update_date = None):
     db_table_columns = dbapi.get_column_names(dbapi.table_struct) 
     for row_index,row in df.iterrows():
         amount = get_punishment_amount(row[df.columns[punish_index]]) / 10000
+        if abs(amount) <= 0.1:
+            continue
         decision_date = dates_trans(row[df.columns[col_index+3]])
         arglist = flatten((city,index,row[df.columns[col_index-2:col_index+3]].values,
                                    decision_date if decision_date else publish_date,
@@ -207,7 +208,7 @@ def remove_invalid():
             os.remove(infile)
 
 def test():
-    infile = r'/home/xudi/tmp/punishment_source/shanghai/148_20170824.html'
+    infile = r'/home/xudi/tmp/punishment_source/shanghai/119_20170913.html'
     dbapi = Publication()
     dbapi.create_table()
     ss = dbapi.get_session()

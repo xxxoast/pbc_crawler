@@ -18,9 +18,9 @@ HEADERS = {
     'Referer': "http://www.pbc.gov.cn"
 }
 
-root_path = r'/home/xudi/tmp/punishment_source'
+root_path = r'/media/xudi/coding/tmp/punishment_source'
 download_path = r'/home/xudi/tmp/selenium_download'
-log_path = r'/home/xudi/tmp/punishment_source/log'
+log_path = r'/media/xudi/coding/tmp/log'
 
 unicode2utf8 = lambda x: x.encode('utf-8') if isinstance(x,unicode) else x
 unicode2cp936 = lambda x: x.encode('cp936') if isinstance(x,unicode) else x
