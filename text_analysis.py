@@ -82,10 +82,12 @@ def parse_html(infile,dbapi,ss,update_date = None):
 #     print infile
     city,index,publish_date = infile.split('/')[-2],infile.split('/')[-1].split('_')[0],int(infile.split('/')[-1].split('_')[1].split('.')[0])  
     has_stored = ss.query(dbapi.table_struct.index).filter_by(city = city,index=index).first()
+    #不重复
     if has_stored:
         return 
     if update_date and update_date > publish_date:
         return
+    #找table Tag
     htmltxt = htmlpath2txt(infile)
     soup = BeautifulSoup(htmltxt,'lxml')
     tags = soup.find_all(is_table_td)
@@ -94,16 +96,20 @@ def parse_html(infile,dbapi,ss,update_date = None):
     else:
         return 
     tag = tag.find_parent('table')
+    #解析table html
     dfs = pd.read_html(tag.prettify())
     df = dfs[0]
+    #去空行，去空白符
     df = df.dropna(axis = 1,how = 'all')
     df = df.applymap(lambda x:empty.sub('',x) if is_replaceble(x) else x)
     if len(df.columns) < 5:
-        return 
+        return
+    #换列名 
     if str(df.columns[0]) == '0':
         df.iloc[0] = df.iloc[0].fillna('')
         df.columns = df.iloc[0].values
         df.drop([0,],axis = 0,inplace = True)
+    #定位处罚类型（内容）列
     col_index = locat_content_column(df.columns)
     punish_index = col_index + 1
     #去尾
@@ -114,10 +120,13 @@ def parse_html(infile,dbapi,ss,update_date = None):
         return
     df = df.fillna(method = 'pad')
     df = df.fillna('')
+    #去重
     df.drop_duplicates(subset=[df.columns[col_index-1],df.columns[col_index-2]], keep='first', inplace=True)
+    #去非支付
     is_payment = df.ix[:,col_index].apply(lambda x: True if payment_kw.search(x) else False)
     not_payment = df.ix[:,col_index].apply(lambda x: True if unpayment_kw.search(x) else False)
     df = df[ (is_payment) & np.logical_not(not_payment)]
+    #取关键字
     keywords = df.ix[:,col_index].apply(get_violation_kw)
     db_table_columns = dbapi.get_column_names(dbapi.table_struct) 
     for row_index,row in df.iterrows():
@@ -129,6 +138,7 @@ def parse_html(infile,dbapi,ss,update_date = None):
                                    decision_date if decision_date else publish_date,
                                    amount,keywords.loc[row_index],row[df.columns[-1]]))
         argdict = dict(zip(db_table_columns,arglist))
+        #插入数据库
         ss.merge(dbapi.table_struct(**argdict))
         ss.commit()
     return 

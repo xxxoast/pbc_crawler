@@ -132,13 +132,16 @@ def crawler(include = [],exclude = [],init = False):
                         fout.write('\n')
             else:
                 ss = dbapi.session()
-                max_count = ss.query(func.max(dbapi.table_struct.index)).filter_by(city = city).scalar() + 1
+                max_count = ss.query(func.max(dbapi.table_struct.index)).filter_by(city = city).scalar()
+                max_count = max_count + 1 if max_count is not None else 0
+                print 'current max index = ',max_count
                 record = ss.query(dbapi.table_struct.update_date).filter_by(city = city).order_by(dbapi.table_struct.update_date.desc()).first()
-                download_urls = find_public_page(url,record.update_date)
+                update_date = record.update_date if record is not None else None
+                download_urls = find_public_page(url,update_date)
                 for (punish_page,punish_url,punish_date) in download_urls:
                     used_to = ss.query(dbapi.table_struct).filter_by(punishment_item_url = punish_url.strip()).scalar()
                     if used_to is None:
-                        new_record = (city,url.strip(),punish_page.strip(),punish_url.strip(),dates_trans(punish_date),max_count + 1)
+                        new_record = (city,url.strip(),punish_page.strip(),punish_url.strip(),dates_trans(punish_date),max_count)
                         dbapi.insert_listlike(dbapi.table_struct,new_record)
                         new_items[city].append(new_record)
                         max_count += 1 
