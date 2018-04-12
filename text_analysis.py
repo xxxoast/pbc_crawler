@@ -22,7 +22,7 @@ date_kw = re.compile(ur'[\u4e00-\u9fa5/\\.-]')
 doc_kw     = re.compile(ur'.((docx{0,1})|(wps)|(xls)|(xlsx))$')
 amount_kw  = re.compile(ur'(?:(?:([1-9][0-9，,.]*万?)元)|(?:罚款([1-9][0-9，,.]*万?)元?))')
 # amount_kw  = re.compile(ur'([1-9][0-9，,.]*万?)元')
-sum_amount_kw = re.compile(ur'[合总]计[\u4e00-\u9fa5]*([1-9][0-9，,.]*万?)元')
+sum_amount_kw = re.compile(ur'[合总共]计[\u4e00-\u9fa5]*([1-9][0-9，,.]*万?)元')
 tenk_kw    = re.compile(ur'万')
 comma_kw   = re.compile(ur'[,，]')
 
