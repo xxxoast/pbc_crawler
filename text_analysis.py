@@ -78,7 +78,7 @@ def htmlpath2txt(htmlpath):
             rows.append(line)
     return ''.join(rows)
 
-def parse_html(infile,dbapi,ss,update_date = None):
+def parse_html(infile,dbapi,ss,update_date = None,type = None):
 #     print infile
     city,index,publish_date = infile.split('/')[-2],infile.split('/')[-1].split('_')[0],int(infile.split('/')[-1].split('_')[1].split('.')[0])  
     has_stored = ss.query(dbapi.table_struct.index).filter_by(city = city,index=index).first()
@@ -188,7 +188,7 @@ def precess_htmls(include,exclude):
                         fout.write(soup.prettify(encoding='utf-8'))
 
 #3.dumpdb
-def dumpdb(include,exclude,update_date = None):
+def dumpdb(include, exclude, update_date = None, type = None):
     dbapi = Publication()
     dbapi.create_table()
     ss = dbapi.get_session()
@@ -200,15 +200,15 @@ def dumpdb(include,exclude,update_date = None):
         for ifile in filter(lambda x: (not x.startswith('.')) and x.endswith('.html'),files):
             infile = os.path.join(root,ifile)
             if infile.endswith('.html'):
-                parse_html(infile,dbapi,ss,update_date)
+                parse_html(infile,dbapi,ss,update_date,type)
                         
-def update_publication(include = [], exclude = [], update_date = None):    
+def update_publication(include = [], exclude = [], update_date = None, type = None):    
     print '    --->>> convert_docs_to_htmls'
     convert_docs_to_htmls(include,exclude)
     print '    --->>> precess_htmls'
     precess_htmls(include,exclude)
     print '    --->>> dumpdb'
-    dumpdb(include,exclude,update_date)
+    dumpdb(include,exclude,update_date,type)
     
 def remove_invalid():
     for root, dirs, files in os.walk(root_path):
@@ -231,9 +231,11 @@ if __name__ == '__main__':
     parser.add_argument('-date','--date', dest='date', nargs='?', default = None)
     parser.add_argument('-include','--include', dest='include', nargs='*', default = [])
     parser.add_argument('-exclude','--exclude', dest='exclude', nargs='*', default = [])
+    parser.add_argument('-type','--type', dest='type', nargs='?', default = 'payment')
     args = parser.parse_args()
     arg_dict = vars(args)
     update_publication(include = arg_dict['include'],\
                        exclude = arg_dict['exclude'],\
-                       update_date = arg_dict['date'])
+                       update_date = arg_dict['date'],\
+                       type = arg_dict['type'])
     print 'done!'
