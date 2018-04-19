@@ -102,12 +102,12 @@ def create_punishment_files(dbapi,city,des_path):
     cnt = 0
     city_root_url = 'http://{}.pbc.gov.cn'.format(city)
     for record in cursor.all():
+        if int(record.index) in has_download:
+                continue
         print 'cnt = ',cnt,', index = ',record.index
         cnt += 1
         #case 1: is excel or doc, like tianjing
         if is_doc_url(record.punishment_item_url):
-            if int(record.index) in has_download:
-                continue
             logger.info( unicode2utf8(u'direct link = {}'.format(record.punishment_item_url)))
             real_url = '/' + '/'.join(record.punishment_item_url.split('//')[-1].split('/')[1:])
 #             print record.publication_url,record.punishment_item_url,real_url
@@ -129,8 +129,6 @@ def create_punishment_files(dbapi,city,des_path):
 #         print 'link_tag = ',link_tag
 #         case 2: is table , like beijing
         if tag is not None:
-            if int(record.index) in has_download:
-                continue
             logger.info( unicode2utf8(u'table = {}'.format(record.punishment_item_url)))
             table_tag = tag.find_parent('table')
             soup = strip_tags(soup, ['span','p'])
