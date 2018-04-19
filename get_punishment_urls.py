@@ -38,7 +38,7 @@ def generate_branch_list():
             fout.write(atag.get('href'))
             fout.write('\n') 
 
-def find_public_page(root_url,update_date ):
+def find_public_page(root_url,update_date):
     #get main page
     download_urls = []
     main_page = get_js_html(root_url)

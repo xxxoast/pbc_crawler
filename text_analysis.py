@@ -228,7 +228,7 @@ if __name__ == '__main__':
     print '--->>> text analysis!'
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-date','--date', dest='date', nargs='?', default = None)
+    parser.add_argument('-update_date','--update_date', dest='update_date', nargs='?', default = None)
     parser.add_argument('-include','--include', dest='include', nargs='*', default = [])
     parser.add_argument('-exclude','--exclude', dest='exclude', nargs='*', default = [])
     parser.add_argument('-type','--type', dest='type', nargs='?', default = 'payment')
@@ -236,6 +236,6 @@ if __name__ == '__main__':
     arg_dict = vars(args)
     update_publication(include = arg_dict['include'],\
                        exclude = arg_dict['exclude'],\
-                       update_date = arg_dict['date'],\
+                       update_date = arg_dict['update_date'],\
                        type = arg_dict['type'])
     print 'done!'

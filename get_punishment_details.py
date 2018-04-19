@@ -68,10 +68,15 @@ def strip_tags(soup,invalid_tags):
             match.replaceWithChildren()
     return soup
 
-def dump_doc(page_url,des_path,text,fname,index,real_url,update_date):
+def dump_doc(page_url,des_path,text,fname,index,real_url,update_date,number = None):
     suffix = fname.split('.')[-1]
-    outfile_name = '.'.join(('_'.join((str(index),str(update_date))),suffix))
+    if ( number is not None ) and ( number > 0 ):
+        outfile_name = '.'.join(('_'.join((str(index),str(number),str(update_date))),suffix))
+    else:
+        outfile_name = '.'.join(('_'.join((str(index),str(update_date))),suffix))
     outfile_path = os.path.join(des_path,outfile_name)
+    if os.path.exists(outfile_path):
+        return 
     content_type = None
 #     print text,page_url,real_url
     download_js(page_url,text,content_type)
@@ -82,7 +87,7 @@ def dump_doc(page_url,des_path,text,fname,index,real_url,update_date):
         print ' ---> [invalid LINK Or FileMoveError]: ', page_url,fname
         logger.error(unicode2utf8(u'invalid link = {} {}'.format(page_url,fname)))
     
-def create_punishment_fiels(dbapi,city,des_path):
+def create_punishment_files(dbapi,city,des_path):
     session = dbapi.get_session()
     cursor  = session.query(dbapi.table_struct).filter_by(city = city)
     count = session.query(func.count(dbapi.table_struct.index)).filter_by(city = city).scalar()
@@ -97,12 +102,12 @@ def create_punishment_fiels(dbapi,city,des_path):
     cnt = 0
     city_root_url = 'http://{}.pbc.gov.cn'.format(city)
     for record in cursor.all():
-        if int(record.index) in has_download:
-            continue
         print 'cnt = ',cnt,', index = ',record.index
         cnt += 1
         #case 1: is excel or doc, like tianjing
         if is_doc_url(record.punishment_item_url):
+            if int(record.index) in has_download:
+                continue
             logger.info( unicode2utf8(u'direct link = {}'.format(record.punishment_item_url)))
             real_url = '/' + '/'.join(record.punishment_item_url.split('//')[-1].split('/')[1:])
 #             print record.publication_url,record.punishment_item_url,real_url
@@ -119,11 +124,13 @@ def create_punishment_fiels(dbapi,city,des_path):
         tag  = None
         if len(tags) > 0:
             tag = tags[-1]
-        link_tag  = soup.find('a',text = link_kw,attrs={'href':href_kw})
+        link_tags  = soup.find_all('a',text = link_kw,attrs={'href':href_kw})
 #         print 'tag = ',tag
 #         print 'link_tag = ',link_tag
 #         case 2: is table , like beijing
         if tag is not None:
+            if int(record.index) in has_download:
+                continue
             logger.info( unicode2utf8(u'table = {}'.format(record.punishment_item_url)))
             table_tag = tag.find_parent('table')
             soup = strip_tags(soup, ['span','p'])
@@ -134,14 +141,15 @@ def create_punishment_fiels(dbapi,city,des_path):
                     fout.write(table_tag.prettify().encode('utf-8'))
             continue
         #case 3: is link, like shanghai
-        elif link_tag:       
-            link_url = link_tag['href']
-            real_link = urljoin(city_root_url,link_url)
-            logger.info( unicode2utf8(u'sub_link = {}'.format(real_link)))
-            text = link_tag.get_text()
-            fname = link_url.split('/')[-1]
-#             print record.punishment_item_url,des_path,text,fname,record.update_date,record.punishment_item_url
-            dump_doc(record.punishment_item_url,des_path,text,fname,record.index,real_link,record.update_date)
+        elif (link_tags is not None) and len(link_tags) > 0:
+            for number,link_tag in enumerate(link_tags):       
+                link_url = link_tag['href']
+                real_link = urljoin(city_root_url,link_url)
+                logger.info( unicode2utf8(u'sub_link = {}'.format(real_link)))
+                text = link_tag.get_text()
+                fname = link_url.split('/')[-1]
+    #             print record.punishment_item_url,des_path,text,fname,record.update_date,record.punishment_item_url
+                dump_doc(record.punishment_item_url,des_path,text,fname,record.index,real_link,record.update_date,number)
             continue
         #case 4: here warning
         print ' ---> [invalid PAGE]: ',city,' ',record.punishment_item_url
@@ -166,7 +174,7 @@ def get_punish_table():
         des_path = os.path.join(root_path,city)
         if not os.path.exists(des_path):
             os.makedirs(des_path)
-        create_punishment_fiels(dbapi,city,des_path)
+        create_punishment_files(dbapi,city,des_path)
 
 def test_download():
     url = r'http://tianjin.pbc.gov.cn/fzhtianjin/113682/113700/113707/index.html'
