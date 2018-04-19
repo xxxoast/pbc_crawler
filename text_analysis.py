@@ -15,7 +15,7 @@ from misc import empty
 
 root_path = r'/home/xudi/tmp/punishment_source'
 
-payment_kw = re.compile(ur'(网络支付)|(预付卡)|(银行卡)|(收单)|(备付金)|(票据)|(支票)|(账户)|(商户)|(支付服务管理)|([清结]算)|(支付)')
+payment_kw = re.compile(ur'(网络支付)|(预付卡)|(银行卡)|(收单)|(备付金)|(票据)|(支票)|(账户)|(商户)|(支付服务管理)|([清结]算)|(支付)|(变更)')
 unpayment_kw = re.compile(ur'(现金)|(残损币)|(假币)|(准备金)|(统计)|(国库)|(反洗钱)|(身份识别)|(外汇)|(消费者)|(征信)')
 content_kw = re.compile(ur'违[法规](行为){0,1}\s*(类型|内容){0,1}')
 date_kw = re.compile(ur'[\u4e00-\u9fa5/\\.-]')
