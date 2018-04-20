@@ -81,7 +81,10 @@ def htmlpath2txt(htmlpath):
 def parse_html(infile,dbapi,ss,update_date = None,type = None):
 #     print infile
     city,index,publish_date = infile.split('/')[-2],infile.split('/')[-1].split('_')[0],int(infile.split('/')[-1].split('_')[1].split('.')[0])  
-    has_stored = ss.query(dbapi.table_struct.index).filter_by(city = city,index=index).first()
+    sub_index = int(infile.split('/')[-1].split('.')[0].split('_')[1])
+    sub_index = 0 if sub_index > 20000000 else sub_index
+    has_stored = ss.query(dbapi.table_struct.index).filter_by(city = city,index = index,sub_index = sub_index).first()
+#     print city,index,publish_date,sub_index
     #不重复
     if has_stored:
         return 
@@ -134,7 +137,7 @@ def parse_html(infile,dbapi,ss,update_date = None,type = None):
         if abs(amount) <= 0.1:
             continue
         decision_date = dates_trans(row[df.columns[col_index+3]])
-        arglist = flatten((city,index,row[df.columns[col_index-2:col_index+3]].values,
+        arglist = flatten((city,index,sub_index,row[df.columns[col_index-2:col_index+3]].values,
                                    decision_date if decision_date else publish_date,
                                    amount,keywords.loc[row_index],row[df.columns[-1]]))
         argdict = dict(zip(db_table_columns,arglist))

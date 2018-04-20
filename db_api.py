@@ -44,6 +44,7 @@ class Publication(DB_BASE):
         self.table_obj = Table(table_name, self.meta,
                                   Column('city', String(64),primary_key = True),
                                   Column('index',Integer,primary_key = True),
+                                  Column('sub_index',Integer,primary_key = True),
                                   Column('corpname',String(128),primary_key = True),
                                   Column('pubnumber',String(128),primary_key = True),
                                   Column('violatype',String(128)),
