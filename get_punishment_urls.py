@@ -110,7 +110,7 @@ def find_public_page(root_url,update_date):
         return []
     return download_urls
     
-def crawler(include = [],exclude = [],init = False):
+def crawler(include = [],exclude = []):
     from db_api import Punishment
     dbapi = Punishment()
     dbapi.create_table()
@@ -122,33 +122,21 @@ def crawler(include = [],exclude = [],init = False):
                 continue
             print city
             new_items[city] = []
-            if init:
-                download_urls = find_public_page(url,update_date = None)
-                des_path = os.path.join(root_path, '-'.join((city , str(len(download_urls)))))
-                with open(des_path,'w+') as fout:
-                    for (punish_page,punish_url,punish_date) in download_urls:
-                        s = ' '.join((city,url.strip(),punish_page.strip(),punish_url.strip(),str(dates_trans(punish_date))))
-                        fout.write(unicode2utf8(s))
-                        fout.write('\n')
-            else:
-                ss = dbapi.session()
-                max_count = ss.query(func.max(dbapi.table_struct.index)).filter_by(city = city).scalar()
-                max_count = max_count + 1 if max_count is not None else 0
-                print 'current max index = ',max_count
-                record = ss.query(dbapi.table_struct.update_date).filter_by(city = city).order_by(dbapi.table_struct.update_date.desc()).first()
-                update_date = record.update_date if record is not None else None
-                download_urls = find_public_page(url,update_date)
-                for (punish_page,punish_url,punish_date) in download_urls:
-                    used_to = ss.query(dbapi.table_struct).filter_by(punishment_item_url = punish_url.strip()).scalar()
-                    if used_to is None:
-                        new_record = (city,url.strip(),punish_page.strip(),punish_url.strip(),dates_trans(punish_date),max_count)
-                        dbapi.insert_listlike(dbapi.table_struct,new_record)
-                        new_items[city].append(new_record)
-                        max_count += 1 
-                ss.close()
-    if init:
-        from db_api import init_punishment_table as init_table
-        init_table()
+            ss = dbapi.session()
+            max_count = ss.query(func.max(dbapi.table_struct.index)).filter_by(city = city).scalar()
+            max_count = max_count + 1 if max_count is not None else 0
+            print 'current max index = ',max_count
+            record = ss.query(dbapi.table_struct.update_date).filter_by(city = city).order_by(dbapi.table_struct.update_date.desc()).first()
+            update_date = record.update_date if record is not None else None
+            download_urls = find_public_page(url,update_date)
+            for (punish_page,punish_url,punish_date) in download_urls:
+                used_to = ss.query(dbapi.table_struct).filter_by(punishment_item_url = punish_url.strip()).scalar()
+                if used_to is None:
+                    new_record = (city,url.strip(),punish_page.strip(),punish_url.strip(),dates_trans(punish_date),max_count)
+                    dbapi.insert_listlike(dbapi.table_struct,new_record)
+                    new_items[city].append(new_record)
+                    max_count += 1 
+            ss.close()
     return new_items
     
 def regex_soup_test():
@@ -167,15 +155,13 @@ if __name__ == '__main__':
     print '--->>> get punishment urls!'
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-init','--init', dest='init', action='store_true', default=False)
     parser.add_argument('-include','--include', dest='include', nargs='*', default = [])
     parser.add_argument('-exclude','--exclude', dest='exclude', nargs='*', default = [])
     args = parser.parse_args()
     arg_dict = vars(args)
     print arg_dict
     crawler(include = arg_dict['include'],\
-            exclude = arg_dict['exclude'],\
-            init = arg_dict['init'])
+            exclude = arg_dict['exclude'])
 
 
     
