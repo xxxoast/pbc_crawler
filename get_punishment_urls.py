@@ -16,7 +16,7 @@ root_path = r'/home/xudi/tmp/pbc_punishment'
 #init 
 key_word_outer = re.compile(ur'^(政务)?公开目录')
 key_word_inner = re.compile(ur'行政处罚(公示){0,1}')
-key_word_punish = re.compile(ur'(((行政){0,1}(处罚|执法)(的)*(信息){0,1}(公示|公示表|表)[\s]*)|([1-9][0-9]*号))')
+key_word_punish = re.compile(ur'(((行政){0,1}(处罚|执法)(的)*(信息){0,1}(公示|公示表|表)[\s]*)|([1-9][0-9]*号)|(行政处罚信息))')
 key_word_date  = re.compile(ur'^20[0-9]{2}-[0-9]{1,2}-[0-9]{1,2}$')
 
 from misc import dates_trans 

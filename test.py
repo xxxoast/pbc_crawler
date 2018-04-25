@@ -9,4 +9,9 @@ html = '''
 
 soup = BeautifulSoup(html,'lxml')
 tags = soup.find_all(is_table_td)
-print tags[0].prettify()
+# print tags[0].prettify()
+
+with open('branch_list.txt','r') as fin:
+    for index,line in enumerate(fin):
+        print index,line.strip().split('//')[1].split('.')[0]
+        
