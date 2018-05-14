@@ -53,8 +53,7 @@ def flatten(l):
 def get_punishment_amount(text):
     total = [ i for i in sum_amount_kw.findall(text) if len(i) > 0]
     if len(total) > 0:
-        total = str2float(total[-1])
-        return total
+        return sum([str2float(i) for i in total])
     else:
         each = [ i for i in flatten(amount_kw.findall(text)) if len(i) > 0]
         return sum([str2float(i) for i in each])
@@ -204,7 +203,8 @@ def dumpdb(include, exclude, update_date = None, type = None):
             infile = os.path.join(root,ifile)
             if infile.endswith('.html'):
                 parse_html(infile,dbapi,ss,update_date,type)
-                        
+    ss.close()
+                       
 def update_publication(include = [], exclude = [], update_date = None, type = None):    
     print '    --->>> convert_docs_to_htmls'
     convert_docs_to_htmls(include,exclude)

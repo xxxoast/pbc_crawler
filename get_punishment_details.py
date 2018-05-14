@@ -64,7 +64,7 @@ def get_content_type(url):
     
 def strip_tags(soup,invalid_tags):
     for tag in invalid_tags: 
-        for match in soup.findAll(tag):
+        for match in soup.find_all(tag):
             match.replaceWithChildren()
     return soup
 
@@ -131,7 +131,7 @@ def create_punishment_files(dbapi,city,des_path):
         if tag is not None:
             logger.info( unicode2utf8(u'table = {}'.format(record.punishment_item_url)))
             table_tag = tag.find_parent('table')
-            soup = strip_tags(soup, ['span','p'])
+            table_tag = strip_tags(table_tag, ['span','p'])
             outfile_name = '.'.join(('_'.join((str(record.index),str(record.update_date))),'html'))
             outfile_path = os.path.join(des_path,outfile_name)
             if not os.path.exists(outfile_path):
